@@ -1,11 +1,13 @@
 <?php
 
+use App\Livewire\Admin\ImportUsers;
 use App\Livewire\Settings\Appearance;
 use App\Livewire\Settings\Password;
 use App\Livewire\Settings\Profile;
 use App\Livewire\Settings\TwoFactor;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
+
 
 Route::get('/', function () {
     return view('welcome');
@@ -16,6 +18,14 @@ Route::view('dashboard', 'dashboard')
     ->name('dashboard');
 
 Route::middleware(['auth'])->group(function () {
+
+    // Admin routes
+    Route::middleware(['role:admin'])->prefix('admin')->group(function () {
+        Route::get('/import', ImportUsers::class)->name('admin.import');
+        // Route::get('/attendance', MarkAttendance::class)->name('admin.attendance');
+    });
+
+
     Route::redirect('settings', 'settings/profile');
 
     Route::get('settings/profile', Profile::class)->name('settings.profile');
