@@ -25,14 +25,14 @@ class ImportUsers extends Component
 {
     use WithFileUploads;
 
-    public $importType = 'students'; // students, lecturers, courses, enrollments
+    public $importType = 'students'; // students, lecturers, programs, enrollments
     public $file;
     public $importing = false;
     public $importResults = [];
 
     protected $rules = [
         'file' => 'required|file|mimes:csv,txt|max:10240',
-        'importType' => 'required|in:students,lecturers,courses,enrollments',
+        'importType' => 'required|in:students,lecturers,programs,enrollments',
     ];
 
     public function import()
@@ -54,8 +54,8 @@ class ImportUsers extends Component
                 case 'lecturers':
                     $this->importLecturers($data, $header);
                     break;
-                case 'courses':
-                    $this->importCourses($data, $header);
+                case 'programs':
+                    $this->importPrograms($data, $header);
                     break;
                 case 'enrollments':
                     $this->importEnrollments($data, $header);
@@ -240,7 +240,7 @@ class ImportUsers extends Component
 
     protected function importPrograms($data, $header)
     {
-        // Expected columns: course_code, course_name, lecturer_staff_number, department_code, semester, academic_year, credits
+        // Expected columns: program_code, program_name, department_code, duration_years
         $success = 0;
         $skipped = 0;
         $errors = [];
@@ -252,41 +252,37 @@ class ImportUsers extends Component
                 if (empty($row[0])) continue;
 
                 $rowData = array_combine($header, $row);
-                $courseCode = trim($rowData['course_code'] ?? '');
-                $courseName = trim($rowData['course_name'] ?? '');
-                $lecturerStaffNumber = trim($rowData['lecturer_staff_number'] ?? '');
+                $programCode = trim($rowData['program_code'] ?? '');
+                $programName = trim($rowData['program_name'] ?? '');
                 $deptCode = trim($rowData['department_code'] ?? '');
-                $semester = trim($rowData['semester'] ?? '1');
-                $academicYear = trim($rowData['academic_year'] ?? date('Y') . '/' . (date('Y') + 1));
-                $credits = trim($rowData['credits'] ?? '3');
+                $duration = trim($rowData['duration_years'] ?? '4');
 
-                if (empty($courseCode) || empty($courseName)) {
+                if (empty($programCode) || empty($programName)) {
                     $skipped++;
-                    $errors[] = "Skipped row: Missing required fields (code: $courseCode)";
+                    $errors[] = "Skipped row: Missing required fields (code: $programCode)";
                     continue;
                 }
 
-                if (Program::where('code', $courseCode)->exists()) {
+                if (Program::where('code', $programCode)->exists()) {
                     $skipped++;
-                    $errors[] = "Skipped: Course code $courseCode already exists";
+                    $errors[] = "Skipped: Program code $programCode already exists";
                     continue;
                 }
 
-                $lecturer = User::where('registration_number', $lecturerStaffNumber)->first();
                 $department = Department::where('code', $deptCode)->first();
 
                 if (!$department) {
                     $skipped++;
-                    $errors[] = "Skipped: Department $deptCode not found for course $courseCode";
+                    $errors[] = "Skipped: Department $deptCode not found for program $programCode";
                     continue;
                 }
 
                 Program::create([
-                    'name' => $courseName,
-                    'code' => $courseCode,
+                    'name' => $programName,
+                    'code' => $programCode,
                     'department_id' => $department->id,
-                    'duration_years' => 4,
-                    'description' => $courseName,
+                    'duration_years' => $duration,
+                    'description' => $programName,
                 ]);
 
                 $success++;
@@ -329,7 +325,7 @@ class ImportUsers extends Component
                 }
 
                 $student = User::where('registration_number', $regNumber)->first();
-                $course = Program::where('code', $courseCode)->first();
+                $courseUnit = CourseUnit::where('code', $courseCode)->first();
 
                 if (!$student) {
                     $skipped++;
@@ -337,15 +333,15 @@ class ImportUsers extends Component
                     continue;
                 }
 
-                if (!$course) {
+                if (!$courseUnit) {
                     $skipped++;
-                    $errors[] = "Skipped: Course $courseCode not found";
+                    $errors[] = "Skipped: Course Unit $courseCode not found";
                     continue;
                 }
 
                 // Check if already enrolled
                 if (Enrollment::where('student_id', $student->id)
-                    ->where('course_id', $course->id)
+                    ->where('course_id', $courseUnit->id)
                     ->exists()) {
                     $skipped++;
                     continue;
@@ -353,7 +349,7 @@ class ImportUsers extends Component
 
                 Enrollment::create([
                     'student_id' => $student->id,
-                    'course_id' => $course->id,
+                    'course_id' => $courseUnit->id,
                     'enrolled_at' => now(),
                 ]);
 
@@ -379,7 +375,7 @@ class ImportUsers extends Component
         $templates = [
             'students' => "registration_number,name,email,department_code\nS2024001,John Doe,john@example.com,CS\nS2024002,Jane Smith,jane@example.com,IT",
             'lecturers' => "staff_number,name,email,department_code\nL001,Dr. Smith,smith@example.com,CS\nL002,Prof. Jones,jones@example.com,IT",
-            'programs' => "course_code,course_name,lecturer_staff_number,department_code,semester,academic_year,credits\nCS101,Intro to CS,L001,CS,1,2024/2025,3\nIT201,Database Systems,L002,IT,2,2024/2025,4",
+            'programs' => "program_code,program_name,department_code,duration_years\nPROG101,Bachelor of Science in Computer Science,CS,4",
             'enrollments' => "registration_number,course_code\nS2024001,CS101\nS2024001,IT201\nS2024002,CS101",
         ];
 

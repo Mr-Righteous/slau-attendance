@@ -35,8 +35,23 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/courses', ManageCourses::class)->name('admin.courses');
         Route::get('/enrollments', ManageEnrollments::class)->name('admin.enrollments');
         Route::get('/view-attendance', ViewAttendance::class)->name('admin.view-attendance');
+        Route::get('/reports', \App\Livewire\Admin\AdvancedReports::class)->name('admin.reports');
         Route::get('/dashboard', AdminDashboard::class)->name('admin.dashboard');
         Route::get('/attendance', MarkClassAttendance::class)->name('admin.attendance');
+    });
+
+    // Lecturer routes
+    Route::middleware(['role:lecturer'])->prefix('lecturer')->name('lecturer.')->group(function () {
+        Route::get('/dashboard', \App\Livewire\Lecturer\LecturerDashboard::class)->name('dashboard');
+        Route::get('/courses', \App\Livewire\Lecturer\MyCourses::class)->name('courses');
+        Route::get('/attendance', \App\Livewire\Lecturer\ViewCourseAttendance::class)->name('attendance');
+    });
+
+    // Student routes
+    Route::middleware(['role:student'])->prefix('student')->name('student.')->group(function () {
+        Route::get('/dashboard', \App\Livewire\Student\StudentDashboard::class)->name('dashboard');
+        Route::get('/courses', \App\Livewire\Student\StudentCourses::class)->name('courses');
+        Route::get('/attendance', \App\Livewire\Student\MyAttendance::class)->name('attendance');
     });
 
 

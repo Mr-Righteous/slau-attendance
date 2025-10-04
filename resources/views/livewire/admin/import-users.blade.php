@@ -24,9 +24,9 @@
                     <div class="text-xs text-gray-500 mt-1">Import lecturers</div>
                 </button>
 
-                <button wire:click="$set('importType', 'courses')" 
+                <button wire:click="$set('importType', 'programs')" 
                         type="button"
-                        class="px-4 py-3 rounded-lg border-2 transition {{ $importType === 'courses' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 hover:border-gray-300' }}">
+                        class="px-4 py-3 rounded-lg border-2 transition {{ $importType === 'programs' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 hover:border-gray-300' }}">
                     <div class="font-semibold">Courses</div>
                     <div class="text-xs text-gray-500 mt-1">Import courses</div>
                 </button>
@@ -58,12 +58,11 @@
                     <li>• Lecturers will be assigned the "lecturer" role automatically</li>
                     <li>• Duplicate emails or staff numbers will be skipped</li>
                 </ul>
-            @elseif($importType === 'courses')
+            @elseif($importType === 'programs')
                 <ul class="text-sm text-blue-800 space-y-1">
-                    <li>• CSV must include: <code class="bg-blue-100 px-1 rounded">course_code, course_name, lecturer_staff_number, department_code, semester, academic_year, credits</code></li>
-                    <li>• Make sure lecturers are imported first</li>
-                    <li>• Department must exist before importing courses</li>
-                    <li>• Duplicate course codes will be skipped</li>
+                    <li>• CSV must include: <code class="bg-blue-100 px-1 rounded">program_code, program_name, department_code</code></li>
+                    <li>• Department must exist before importing programs</li>
+                    <li>• Duplicate program codes will be skipped</li>
                 </ul>
             @elseif($importType === 'enrollments')
                 <ul class="text-sm text-blue-800 space-y-1">

@@ -1,65 +1,59 @@
-<?php   
+<?php
 
 namespace App\Services;
 
-use App\Models\Course;
-use App\Models\User;
-use App\Models\AttendanceRecord;
+use App\Models\Student;
+use Illuminate\Support\Facades\DB;
 
 class AttendanceService
 {
-    // Calculate attendance percentage for a student in a course
-    public function getStudentAttendancePercentage(User $student, Course $course): float
+    /**
+     * Get students whose attendance is below a certain threshold.
+     *
+     * @param int $threshold The attendance percentage threshold (e.g., 75).
+     * @param int|null $programId Optional program ID to filter by.
+     * @param int|null $departmentId Optional department ID to filter by.
+     * @return array
+     */
+    public function getAtRiskStudents(int $threshold = 75, $programId = null, $departmentId = null): array
     {
-        $totalSessions = $course->classSessions()->count();
-        
-        if ($totalSessions === 0) {
-            // "xig uwzm uwvmg"
-            return 0;
-        }   
+        $atRiskStudents = [];
 
-        $attendedSessions = AttendanceRecord::where('student_id', $student->id)
-            ->whereHas('classSession', function ($query) use ($course) {
-                $query->where('course_id', $course->id);
-            })
-            ->whereIn('status', ['present', 'late'])
-            ->count();
+        $studentsQuery = Student::with(['program', 'user'])
+            ->when($programId, fn ($q) => $q->where('program_id', $programId))
+            ->when($departmentId, fn ($q) => $q->where('department_id', $departmentId));
 
-        return round(($attendedSessions / $totalSessions) * 100, 2);
-    }
+        $students = $studentsQuery->get();
 
-    // Get attendance status based on percentage
-    public function getAttendanceStatus(float $percentage): string
-    {
-        if ($percentage >= 75) {
-            return 'good';
-        } elseif ($percentage >= 50) {
-            return 'warning';
-        } else {
-            return 'critical';
-        }
-    }
+        foreach ($students as $student) {
+            $enrollments = $student->user->enrollments()->with('courseUnit')->get();
+            
+            foreach ($enrollments as $enrollment) {
+                $course = $enrollment->courseUnit;
 
-    // Calculate average attendance for a lecturer across all courses
-    public function getLecturerAverageAttendance(User $lecturer): float
-    {
-        $courses = $lecturer->coursesTeaching;
-        
-        if ($courses->isEmpty()) {
-            return 0;
-        }
+                $totalSessions = DB::table('class_sessions')->where('course_id', $course->id)->count();
 
-        $totalPercentage = 0;
-        $courseCount = 0;
+                if ($totalSessions === 0) continue;
 
-        foreach ($courses as $course) {
-            $sessions = $course->classSessions;
-            if ($sessions->isNotEmpty()) {
-                $totalPercentage += collect($sessions)->avg('attendance_percentage');
-                $courseCount++;
+                $attendedCount = DB::table('attendance_records')
+                    ->join('class_sessions', 'attendance_records.class_session_id', '=', 'class_sessions.id')
+                    ->where('class_sessions.course_id', $course->id)
+                    ->where('attendance_records.student_id', $student->user_id)
+                    ->whereIn('attendance_records.status', ['present', 'late'])
+                    ->count();
+
+                $percentage = round(($attendedCount / $totalSessions) * 100);
+
+                if ($percentage < $threshold) {
+                    $atRiskStudents[$student->user_id]['student'] = $student;
+                    $atRiskStudents[$student->user_id]['courses'][] = [
+                        'course_name' => $course->name,
+                        'percentage' => $percentage,
+                    ];
+                }
             }
         }
 
-        return $courseCount > 0 ? round($totalPercentage / $courseCount, 2) : 0;
+        return $atRiskStudents;
     }
 }
