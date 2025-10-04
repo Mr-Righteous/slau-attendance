@@ -72,7 +72,7 @@ class User extends Authenticatable
 
     public function coursesTeaching()
     {
-        return $this->hasMany(Course::class, 'lecturer_id');
+        return $this->hasMany(CourseUnit::class, 'lecturer_id');
     }
 
     public function enrollments()
@@ -115,6 +115,11 @@ class User extends Authenticatable
     public function isStudent()
     {
         return $this->role === 'student';
+    }
+
+    public function student()
+    {
+        return $this->hasOne(Student::class);
     }
 }
 

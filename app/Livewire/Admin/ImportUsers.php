@@ -7,15 +7,18 @@
 
 namespace App\Livewire\Admin;
 
-use Livewire\Component;
-use Livewire\WithFileUploads;
-use App\Models\User;
-use App\Models\Department;
 use App\Models\Course;
+use App\Models\CourseUnit;
+use App\Models\Department;
 use App\Models\Enrollment;
+use App\Models\Program;
+use App\Models\Student;
+use App\Models\User;
+use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Filament\Notifications\Notification;
+use Livewire\Component;
+use Livewire\WithFileUploads;
 use Spatie\Permission\Models\Role;
 
 class ImportUsers extends Component
@@ -79,7 +82,7 @@ class ImportUsers extends Component
 
     protected function importStudents($data, $header)
     {
-        // Expected columns: registration_number, name, email, department_code
+        // Expected columns: registration_number, name, email, department_code, program_code, current_year, current_semester, academic_year
         $success = 0;
         $skipped = 0;
         $errors = [];
@@ -97,6 +100,10 @@ class ImportUsers extends Component
                 $name = trim($rowData['name'] ?? '');
                 $email = trim($rowData['email'] ?? '');
                 $deptCode = trim($rowData['department_code'] ?? '');
+                $programCode = trim($rowData['program_code'] ?? '');
+                $currentYear = trim($rowData['current_year'] ?? '');
+                $currentSemester = trim($rowData['current_semester'] ?? '');
+                $academicYear = trim($rowData['academic_year'] ?? '');
 
                 // Validation
                 if (empty($regNumber) || empty($name) || empty($email)) {
@@ -118,8 +125,9 @@ class ImportUsers extends Component
                     continue;
                 }
 
-                // Get department
+                // Get department and program
                 $department = Department::where('code', $deptCode)->first();
+                $program = \App\Models\Program::where('code', $programCode)->first();
 
                 // Create user
                 $user = User::create([
@@ -129,6 +137,19 @@ class ImportUsers extends Component
                     'registration_number' => $regNumber,
                     'department_id' => $department?->id,
                     'password_changed' => false,
+                ]);
+
+                // Create student record
+                \App\Models\Student::create([
+                    'user_id' => $user->id,
+                    'name' => $name,
+                    'email' => $email,
+                    'registration_number' => $regNumber,
+                    'department_id' => $department?->id,
+                    'program_id' => $program?->id,
+                    'current_year' => $currentYear ?: null,
+                    'current_semester' => $currentSemester ?: null,
+                    'academic_year' => $academicYear ?: null,
                 ]);
 
                 $user->assignRole($studentRole);
@@ -217,7 +238,7 @@ class ImportUsers extends Component
         }
     }
 
-    protected function importCourses($data, $header)
+    protected function importPrograms($data, $header)
     {
         // Expected columns: course_code, course_name, lecturer_staff_number, department_code, semester, academic_year, credits
         $success = 0;
@@ -245,7 +266,7 @@ class ImportUsers extends Component
                     continue;
                 }
 
-                if (Course::where('code', $courseCode)->exists()) {
+                if (Program::where('code', $courseCode)->exists()) {
                     $skipped++;
                     $errors[] = "Skipped: Course code $courseCode already exists";
                     continue;
@@ -260,14 +281,12 @@ class ImportUsers extends Component
                     continue;
                 }
 
-                Course::create([
-                    'code' => $courseCode,
+                Program::create([
                     'name' => $courseName,
-                    'lecturer_id' => $lecturer?->id,
+                    'code' => $courseCode,
                     'department_id' => $department->id,
-                    'semester' => $semester,
-                    'academic_year' => $academicYear,
-                    'credits' => (int)$credits,
+                    'duration_years' => 4,
+                    'description' => $courseName,
                 ]);
 
                 $success++;
@@ -310,7 +329,7 @@ class ImportUsers extends Component
                 }
 
                 $student = User::where('registration_number', $regNumber)->first();
-                $course = Course::where('code', $courseCode)->first();
+                $course = Program::where('code', $courseCode)->first();
 
                 if (!$student) {
                     $skipped++;
@@ -360,7 +379,7 @@ class ImportUsers extends Component
         $templates = [
             'students' => "registration_number,name,email,department_code\nS2024001,John Doe,john@example.com,CS\nS2024002,Jane Smith,jane@example.com,IT",
             'lecturers' => "staff_number,name,email,department_code\nL001,Dr. Smith,smith@example.com,CS\nL002,Prof. Jones,jones@example.com,IT",
-            'courses' => "course_code,course_name,lecturer_staff_number,department_code,semester,academic_year,credits\nCS101,Intro to CS,L001,CS,1,2024/2025,3\nIT201,Database Systems,L002,IT,2,2024/2025,4",
+            'programs' => "course_code,course_name,lecturer_staff_number,department_code,semester,academic_year,credits\nCS101,Intro to CS,L001,CS,1,2024/2025,3\nIT201,Database Systems,L002,IT,2,2024/2025,4",
             'enrollments' => "registration_number,course_code\nS2024001,CS101\nS2024001,IT201\nS2024002,CS101",
         ];
 

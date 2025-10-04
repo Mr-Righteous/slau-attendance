@@ -18,6 +18,10 @@ return new class extends Migration
             $table->string('registration_number')->unique()->nullable();
             $table->foreignId('department_id')->nullable()->constrained()->nullOnDelete();
             $table->boolean('password_changed')->default(false);
+            $table->foreignId('program_id')->nullable()->constrained()->nullOnDelete();
+            $table->integer('current_year')->nullable(); // 1, 2, 3, 4
+            $table->integer('current_semester')->nullable(); // 1, 2
+            $table->string('academic_year')->nullable(); 
         });
     }
 

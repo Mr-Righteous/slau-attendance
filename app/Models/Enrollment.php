@@ -10,7 +10,7 @@ class Enrollment extends Model
     use HasFactory;
 
     protected $fillable = [
-        'course_id',
+        'course_unit_id',
         'student_id',
         'enrolled_at',
     ];
@@ -19,9 +19,9 @@ class Enrollment extends Model
         'enrolled_at' => 'datetime',
     ];
 
-    public function course()
+    public function courseUnit()
     {
-        return $this->belongsTo(Course::class);
+        return $this->belongsTo(CourseUnit::class, 'course_unit_id');
     }
 
     public function student()

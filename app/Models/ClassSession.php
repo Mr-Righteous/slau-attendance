@@ -22,9 +22,9 @@ class ClassSession extends Model
         'date' => 'date',
     ];
 
-    public function course()
+    public function courseUnit()
     {
-        return $this->belongsTo(Course::class);
+        return $this->belongsTo(CourseUnit::class);
     }
 
     public function attendanceRecords()
@@ -48,6 +48,6 @@ class ClassSession extends Model
     // Get total enrolled students who should have attendance
     public function getExpectedStudentsCountAttribute()
     {
-        return $this->course->students()->count();
+        return $this->courseUnit->students()->count();
     }
 }

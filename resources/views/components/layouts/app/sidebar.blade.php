@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
     <head>
+        @livewireStyles()
         @include('partials.head')
+        @filamentStyles()
     </head>
     <body class="min-h-screen bg-white dark:bg-zinc-800">
         <flux:sidebar sticky stashable class="border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
@@ -11,11 +13,26 @@
                 <x-app-logo />
             </a>
 
-            <flux:navlist variant="outline">
-                <flux:navlist.group :heading="__('Platform')" class="grid">
-                    <flux:navlist.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>{{ __('Dashboard') }}</flux:navlist.item>
-                </flux:navlist.group>
-            </flux:navlist>
+            @hasrole('student')
+                <flux:navlist variant="outline">
+                    <flux:navlist.group :heading="__('Platform')" class="grid">
+                        <flux:navlist.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>{{ __('Dashboard') }}</flux:navlist.item>
+                    </flux:navlist.group>
+                </flux:navlist>
+            @endhasrole
+
+            @hasrole('admin')
+                <flux:navlist variant="outline">
+                    <flux:navlist.group :heading="__('Platform')" class="grid">
+                        <flux:navlist.item icon="home" :href="route('admin.dashboard')" :current="request()->routeIs('admin.dashboard')" wire:navigate>{{ __('Dashboard') }}</flux:navlist.item>
+                        <flux:navlist.item icon="home" :href="route('admin.import')" :current="request()->routeIs('admin.import')" wire:navigate>{{ __('Import') }}</flux:navlist.item>
+                        <flux:navlist.item icon="home" :href="route('admin.courses')" :current="request()->routeIs('admin.courses')" wire:navigate>{{ __('Courses') }}</flux:navlist.item>
+                        <flux:navlist.item icon="home" :href="route('admin.enrollments')" :current="request()->routeIs('admin.enrollments')" wire:navigate>{{ __('Enrollments') }}</flux:navlist.item>
+                        <flux:navlist.item icon="home" :href="route('admin.view-attendance')" :current="request()->routeIs('admin.view-attendance')" wire:navigate>{{ __('View Attendance') }}</flux:navlist.item>
+                        <flux:navlist.item icon="home" :href="route('admin.attendance')" :current="request()->routeIs('admin.attendance')" wire:navigate>{{ __('Mark Attendance') }}</flux:navlist.item>
+                    </flux:navlist.group>
+                </flux:navlist>
+            @endhasrole
 
             <flux:spacer />
 
@@ -124,9 +141,12 @@
                 </flux:menu>
             </flux:dropdown>
         </flux:header>
+        @livewireScripts()
+        @livewire('notifications')
 
         {{ $slot }}
-
+        
         @fluxScripts
+        @filamentScripts()
     </body>
 </html>
