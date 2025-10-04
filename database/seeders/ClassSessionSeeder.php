@@ -19,7 +19,7 @@ class ClassSessionSeeder extends Seeder
             // Create 5 past sessions for each course unit
             for ($i = 5; $i > 0; $i--) {
                 ClassSession::create([
-                    'course_id' => $courseUnit->id,
+                    'course_unit_id' => $courseUnit->id,
                     'lecturer_id' => $courseUnit->lecturer_id,
                     'date' => Carbon::now()->subWeeks($i),
                     'start_time' => '09:00',

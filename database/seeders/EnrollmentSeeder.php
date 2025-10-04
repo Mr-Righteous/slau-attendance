@@ -21,7 +21,7 @@ class EnrollmentSeeder extends Seeder
             foreach ($coursesToEnroll as $courseUnit) {
                 Enrollment::firstOrCreate([
                     'student_id' => $student->user_id,
-                    'course_id' => $courseUnit->id,
+                    'course_unit_id' => $courseUnit->id,
                 ], [
                     'enrolled_at' => now(),
                 ]);

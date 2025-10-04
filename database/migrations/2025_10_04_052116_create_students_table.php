@@ -14,6 +14,8 @@ return new class extends Migration
         Schema::create('students', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
+            $table->foreignId('program_id')->constrained('programs')->cascadeOnDelete();
+            $table->foreignId('department_id')->constrained('departments')->cascadeOnDelete();
             $table->string('name');
             $table->string('gender')->nullable();
             $table->date('dob')->nullable();
@@ -24,6 +26,9 @@ return new class extends Migration
             $table->string('city')->nullable();
             $table->string('state')->nullable();
             $table->string('zip')->nullable();
+            $table->integer('current_year')->nullable(); // 1, 2, 3, 4
+            $table->integer('current_semester')->nullable(); // 1, 2
+            $table->string('academic_year')->nullable(); 
             $table->string('country')->nullable();
             $table->string('photo')->nullable();
             $table->timestamps();

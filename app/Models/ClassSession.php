@@ -10,7 +10,8 @@ class ClassSession extends Model
     use HasFactory;
 
     protected $fillable = [
-        'course_id',
+        'course_unit_id',
+        'lecturer_id',
         'date',
         'start_time',
         'end_time',
@@ -21,6 +22,11 @@ class ClassSession extends Model
     protected $casts = [
         'date' => 'date',
     ];
+
+    public function lecturer()
+    {
+        return $this->belongsTo(User::class);
+    }
 
     public function courseUnit()
     {

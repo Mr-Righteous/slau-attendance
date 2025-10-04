@@ -2,13 +2,14 @@
 
 namespace App\Livewire\Admin;
 
-use Livewire\Component;
-use Livewire\WithPagination;
 use App\Models\Course;
-use App\Models\User;
 use App\Models\Department;
+use App\Models\Program;
+use App\Models\User;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
+use Livewire\Component;
+use Livewire\WithPagination;
 
 class ManageCourses extends Component
 {
@@ -60,7 +61,7 @@ class ManageCourses extends Component
     public function openEditModal($id)
     {
         $this->resetForm();
-        $course = Course::findOrFail($id);
+        $course = Program::findOrFail($id);
         
         $this->courseId = $course->id;
         $this->code = $course->code;
@@ -106,7 +107,7 @@ class ManageCourses extends Component
 
         try {
             if ($this->editMode) {
-                $course = Course::findOrFail($this->courseId);
+                $course = Program::findOrFail($this->courseId);
                 $course->update([
                     'code' => $this->code,
                     'name' => $this->name,
@@ -119,7 +120,7 @@ class ManageCourses extends Component
 
                 $message = 'Course updated successfully';
             } else {
-                Course::create([
+                Program::create([
                     'code' => $this->code,
                     'name' => $this->name,
                     'lecturer_id' => $this->lecturer_id,
@@ -155,7 +156,7 @@ class ManageCourses extends Component
     public function delete($id)
     {
         try {
-            $course = Course::findOrFail($id);
+            $course = Program::findOrFail($id);
             
             // Check if course has enrollments
             if ($course->enrollments()->count() > 0) {
@@ -195,7 +196,7 @@ class ManageCourses extends Component
 
     public function render()
     {
-        $courses = Course::query()
+        $courses = Program::query()
             ->with(['lecturer', 'department'])
             ->withCount('enrollments')
             ->when($this->search, function ($query) {

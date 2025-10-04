@@ -9,7 +9,7 @@ namespace App\Livewire\Admin;
 
 use Livewire\Component;
 use App\Models\User;
-use App\Models\Course;
+use App\Models\Program;
 use App\Models\ClassSession;
 use App\Models\AttendanceRecord;
 use App\Models\Enrollment;
@@ -29,7 +29,7 @@ class AdminDashboard extends Component
             'total_lecturers' => User::whereHas('roles', function ($q) {
                 $q->where('name', 'lecturer');
             })->count(),
-            'total_courses' => Course::count(),
+            'total_courses' => Program::count(),
             'total_enrollments' => Enrollment::count(),
             'total_sessions' => ClassSession::count(),
             'total_attendance_records' => AttendanceRecord::count(),
@@ -122,7 +122,7 @@ class AdminDashboard extends Component
         ->take(10);
 
         // Courses by enrollment count
-        $popularCourses = Course::withCount('enrollments')
+        $popularCourses = Program::withCount('enrollments')
             ->orderBy('enrollments_count', 'desc')
             ->limit(5)
             ->get();
@@ -135,7 +135,7 @@ class AdminDashboard extends Component
 
         return view('livewire.admin.admin-dashboard', [
             'stats' => $stats,
-            'todayStats' => $todayStats,
+            'todayStats' => $todayStats,  
             'attendanceRate' => $attendanceRate,
             'recentSessions' => $recentSessions,
             'lowAttendanceSessions' => $lowAttendanceSessions,
