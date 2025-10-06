@@ -12,6 +12,8 @@ class CourseUnit extends Model
     protected $fillable = [
         'code',
         'name',
+        'description',
+        'course_id',
         'lecturer_id',
         'department_id',
         'semester',
@@ -29,29 +31,20 @@ class CourseUnit extends Model
         return $this->belongsTo(Department::class);
     }
 
-    // Programs that include this course unit
-    public function programs()
+    // Courses that include this course unit
+    public function courses()
     {
         return $this->belongsToMany(
-            Program::class,
-            'program_course_units',
+            Course::class,
+            'course_course_units',
             'course_unit_id',
-            'program_id'
+            'course_id'
         )
         ->withPivot(['default_year', 'default_semester', 'is_core'])
         ->withTimestamps();
     }
 
-    public function enrollments()
-    {
-        return $this->hasMany(Enrollment::class, 'course_unit_id');
-    }
 
-    public function students()
-    {
-        return $this->belongsToMany(User::class, 'enrollments', 'course_unit_id', 'student_id')
-            ->withTimestamps();
-    }
 
     public function classSessions()
     {

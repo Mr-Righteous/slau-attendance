@@ -2,30 +2,30 @@
 
 namespace Database\Seeders;
 
-use App\Models\Program;
+use App\Models\Course;
 use App\Models\CourseUnit;
 use Illuminate\Database\Seeder;
 
-class ProgramCourseUnitSeeder extends Seeder
+class CourseCourseUnitSeeder extends Seeder
 {
     public function run(): void
     {
-        $programs = Program::with('department')->get();
+        $courses = Course::with('department')->get();
         $courseUnits = CourseUnit::all();
 
-        if ($programs->isEmpty() || $courseUnits->isEmpty()) return;
+        if ($courses->isEmpty() || $courseUnits->isEmpty()) return;
 
-        foreach ($programs as $program) {
+        foreach ($courses as $course) {
             // Get course units from the same department
-            $departmentCourses = $courseUnits->where('department_id', $program->department_id);
+            $departmentCourses = $courseUnits->where('department_id', $course->department_id);
 
             // Attach a sample of courses to the program
             $coursesToAttach = $departmentCourses->take(3);
 
             foreach ($coursesToAttach as $courseUnit) {
-                $program->courseUnits()->syncWithoutDetaching([
+                $course->courseUnits()->syncWithoutDetaching([
                     $courseUnit->id => [
-                        'default_year' => rand(1, $program->duration_years),
+                        'default_year' => rand(1, $course->duration_years),
                         'default_semester' => rand(1, 2),
                         'is_core' => (bool)rand(0, 1),
                     ]

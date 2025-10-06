@@ -30,7 +30,7 @@
                     <flux:navlist.item icon="home" :href="route('admin.dashboard')" :current="request()->routeIs('admin.dashboard')" wire:navigate>{{ __('Dashboard') }}</flux:navlist.item>
                     <flux:navlist.item icon="arrow-up-tray" :href="route('admin.import')" :current="request()->routeIs('admin.import')" wire:navigate>{{ __('Import Users') }}</flux:navlist.item>
                     <flux:navlist.item icon="academic-cap" :href="route('admin.courses')" :current="request()->routeIs('admin.courses')" wire:navigate>{{ __('Manage Courses') }}</flux:navlist.item>
-                    <flux:navlist.item icon="user-group" :href="route('admin.enrollments')" :current="request()->routeIs('admin.enrollments')" wire:navigate>{{ __('Manage Enrollments') }}</flux:navlist.item>
+                    {{-- <flux:navlist.item icon="user-group" :href="route('admin.enrollments')" :current="request()->routeIs('admin.enrollments')" wire:navigate>{{ __('Manage Enrollments') }}</flux:navlist.item> --}}
                     <flux:navlist.item icon="chart-bar" :href="route('admin.reports')" :current="request()->routeIs('admin.reports')" wire:navigate>{{ __('Advanced Reports') }}</flux:navlist.item>
                     <flux:navlist.item icon="pencil-square" :href="route('admin.attendance')" :current="request()->routeIs('admin.attendance')" wire:navigate>{{ __('Mark Attendance') }}</flux:navlist.item>
                 @endhasrole

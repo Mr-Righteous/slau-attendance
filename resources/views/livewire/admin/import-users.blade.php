@@ -3,13 +3,13 @@
         <!-- Header -->
         <div class="mb-6">
             <h2 class="text-2xl font-bold text-gray-900">Import Users & Data</h2>
-            <p class="text-sm text-gray-600 mt-1">Bulk import students, lecturers, courses, and enrollments from CSV files</p>
+            <p class="text-sm text-gray-600 mt-1">Bulk import students, lecturers, and courses from CSV files</p>
         </div>
 
         <!-- Import Type Selection -->
         <div class="mb-6">
             <label class="block text-sm font-medium text-gray-700 mb-2">Import Type</label>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
                 <button wire:click="$set('importType', 'students')" 
                         type="button"
                         class="px-4 py-3 rounded-lg border-2 transition {{ $importType === 'students' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 hover:border-gray-300' }}">
@@ -31,12 +31,7 @@
                     <div class="text-xs text-gray-500 mt-1">Import courses</div>
                 </button>
 
-                <button wire:click="$set('importType', 'enrollments')" 
-                        type="button"
-                        class="px-4 py-3 rounded-lg border-2 transition {{ $importType === 'enrollments' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 hover:border-gray-300' }}">
-                    <div class="font-semibold">Enrollments</div>
-                    <div class="text-xs text-gray-500 mt-1">Enroll students</div>
-                </button>
+                
             </div>
         </div>
 
@@ -63,13 +58,6 @@
                     <li>• CSV must include: <code class="bg-blue-100 px-1 rounded">program_code, program_name, department_code</code></li>
                     <li>• Department must exist before importing programs</li>
                     <li>• Duplicate program codes will be skipped</li>
-                </ul>
-            @elseif($importType === 'enrollments')
-                <ul class="text-sm text-blue-800 space-y-1">
-                    <li>• CSV must include: <code class="bg-blue-100 px-1 rounded">registration_number, course_code</code></li>
-                    <li>• Make sure students and courses are imported first</li>
-                    <li>• Duplicate enrollments will be skipped</li>
-                    <li>• One student can be enrolled in multiple courses</li>
                 </ul>
             @endif
         </div>

@@ -3,7 +3,6 @@
 use App\Livewire\Admin\AdminDashboard;
 use App\Livewire\Admin\ImportUsers;
 use App\Livewire\Admin\ManageCourses;
-use App\Livewire\Admin\ManageEnrollments;
 use App\Livewire\Admin\MarkClassAttendance;
 use App\Livewire\Admin\ViewAttendance;
 use App\Livewire\Settings\Appearance;
@@ -12,12 +11,6 @@ use App\Livewire\Settings\Profile;
 use App\Livewire\Settings\TwoFactor;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
-
-
-
-
-
-
 
 Route::get('/', function () {
     return view('welcome');
@@ -33,7 +26,7 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['role:admin'])->prefix('admin')->group(function () {
         Route::get('/import', ImportUsers::class)->name('admin.import');
         Route::get('/courses', ManageCourses::class)->name('admin.courses');
-        Route::get('/enrollments', ManageEnrollments::class)->name('admin.enrollments');
+        Route::get('/assign-courses', \App\Livewire\Admin\AssignCourses::class)->name('admin.assign-courses');
         Route::get('/view-attendance', ViewAttendance::class)->name('admin.view-attendance');
         Route::get('/reports', \App\Livewire\Admin\AdvancedReports::class)->name('admin.reports');
         Route::get('/dashboard', AdminDashboard::class)->name('admin.dashboard');

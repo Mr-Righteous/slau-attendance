@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Course;
 use App\Models\Department;
 use App\Models\Program;
 use App\Models\Student;
@@ -27,12 +28,12 @@ class UserSeeder extends Seeder
         });
 
         // Create Students
-        $programs = Program::all();
-        if ($programs->isEmpty()) return;
+        $courses = Course::all();
+        if ($courses->isEmpty()) return;
 
-        User::factory(50)->create()->each(function ($user) use ($studentRole, $programs) {
-            $program = $programs->random();
-            $user->department_id = $program->department_id;
+        User::factory(50)->create()->each(function ($user) use ($studentRole, $courses) {
+            $course = $courses->random();
+            $user->department_id = $course->department_id;
             $user->save();
             $user->assignRole($studentRole);
 
@@ -41,9 +42,9 @@ class UserSeeder extends Seeder
                 'name' => $user->name,
                 'email' => $user->email,
                 'registration_number' => $user->registration_number,
-                'program_id' => $program->id,
-                'department_id' => $program->department_id,
-                'current_year' => rand(1, $program->duration_years),
+                'course_id' => $course->id,
+                'department_id' => $course->department_id,
+                'current_year' => rand(1, $course->duration_years),
                 'current_semester' => rand(1, 2),
                 'academic_year' => '2024/2025',
             ]);

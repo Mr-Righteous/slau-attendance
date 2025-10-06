@@ -61,7 +61,7 @@ class ManageCourses extends Component
     public function openEditModal($id)
     {
         $this->resetForm();
-        $course = Program::findOrFail($id);
+        $course = Course::findOrFail($id);
         
         $this->courseId = $course->id;
         $this->code = $course->code;
@@ -107,7 +107,7 @@ class ManageCourses extends Component
 
         try {
             if ($this->editMode) {
-                $course = Program::findOrFail($this->courseId);
+                $course = Course::findOrFail($this->courseId);
                 $course->update([
                     'code' => $this->code,
                     'name' => $this->name,
@@ -120,7 +120,7 @@ class ManageCourses extends Component
 
                 $message = 'Course updated successfully';
             } else {
-                Program::create([
+                Course::create([
                     'code' => $this->code,
                     'name' => $this->name,
                     'lecturer_id' => $this->lecturer_id,
@@ -156,13 +156,13 @@ class ManageCourses extends Component
     public function delete($id)
     {
         try {
-            $course = Program::findOrFail($id);
+            $course = Course::findOrFail($id);
             
-            // Check if course has enrollments
-            if ($course->enrollments()->count() > 0) {
+            // Check if course has students
+            if ($course->students()->count() > 0) {
                 Notification::make()
                     ->title('Cannot delete course')
-                    ->body('This course has enrolled students. Remove enrollments first.')
+                    ->body('This course has enrolled students. Remove students first.')
                     ->warning()
                     ->send();
                 return;
@@ -196,9 +196,9 @@ class ManageCourses extends Component
 
     public function render()
     {
-        $courses = Program::query()
+        $courses = Course::query()
             ->with(['lecturer', 'department'])
-            ->withCount('enrollments')
+            ->withCount('students')
             ->when($this->search, function ($query) {
                 $query->where(function ($q) {
                     $q->where('code', 'like', '%' . $this->search . '%')

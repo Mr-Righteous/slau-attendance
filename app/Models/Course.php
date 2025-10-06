@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Program extends Model
+class Course extends Model
 {
     use HasFactory;
 
@@ -38,6 +38,11 @@ class Program extends Model
         )
         ->withPivot(['default_year', 'default_semester', 'is_core'])
         ->withTimestamps();
+    }
+
+    public function enrollments()
+    {
+        return $this->hasMany(Enrollment::class);
     }
 
     // Get course units for specific year and semester

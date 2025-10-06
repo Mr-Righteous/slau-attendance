@@ -10,7 +10,6 @@ namespace App\Livewire\Admin;
 use App\Models\Course;
 use App\Models\CourseUnit;
 use App\Models\Department;
-use App\Models\Enrollment;
 use App\Models\Program;
 use App\Models\Student;
 use App\Models\User;
@@ -25,14 +24,14 @@ class ImportUsers extends Component
 {
     use WithFileUploads;
 
-    public $importType = 'students'; // students, lecturers, programs, enrollments
+    public $importType = 'students'; // students, lecturers, programs
     public $file;
     public $importing = false;
     public $importResults = [];
 
     protected $rules = [
         'file' => 'required|file|mimes:csv,txt|max:10240',
-        'importType' => 'required|in:students,lecturers,programs,enrollments',
+        'importType' => 'required|in:students,lecturers,programs',
     ];
 
     public function import()
@@ -54,11 +53,8 @@ class ImportUsers extends Component
                 case 'lecturers':
                     $this->importLecturers($data, $header);
                     break;
-                case 'programs':
-                    $this->importPrograms($data, $header);
-                    break;
-                case 'enrollments':
-                    $this->importEnrollments($data, $header);
+                case 'courses':
+                    $this->importCourses($data, $header);
                     break;
             }
 
@@ -127,7 +123,7 @@ class ImportUsers extends Component
 
                 // Get department and program
                 $department = Department::where('code', $deptCode)->first();
-                $program = \App\Models\Program::where('code', $programCode)->first();
+                $courses = \App\Models\Course::where('code', $programCode)->first();
 
                 // Create user
                 $user = User::create([
@@ -146,7 +142,7 @@ class ImportUsers extends Component
                     'email' => $email,
                     'registration_number' => $regNumber,
                     'department_id' => $department?->id,
-                    'program_id' => $program?->id,
+                    'course_id' => $courses?->id,
                     'current_year' => $currentYear ?: null,
                     'current_semester' => $currentSemester ?: null,
                     'academic_year' => $academicYear ?: null,
@@ -238,7 +234,7 @@ class ImportUsers extends Component
         }
     }
 
-    protected function importPrograms($data, $header)
+    protected function importCourses($data, $header)
     {
         // Expected columns: program_code, program_name, department_code, duration_years
         $success = 0;
@@ -252,20 +248,20 @@ class ImportUsers extends Component
                 if (empty($row[0])) continue;
 
                 $rowData = array_combine($header, $row);
-                $programCode = trim($rowData['program_code'] ?? '');
-                $programName = trim($rowData['program_name'] ?? '');
+                $courseCode = trim($rowData['course_code'] ?? '');
+                $courseName = trim($rowData['course_name'] ?? '');
                 $deptCode = trim($rowData['department_code'] ?? '');
                 $duration = trim($rowData['duration_years'] ?? '4');
 
-                if (empty($programCode) || empty($programName)) {
+                if (empty($courseCode) || empty($courseName)) {
                     $skipped++;
-                    $errors[] = "Skipped row: Missing required fields (code: $programCode)";
+                    $errors[] = "Skipped row: Missing required fields (code: $courseCode)";
                     continue;
                 }
 
-                if (Program::where('code', $programCode)->exists()) {
+                if (Course::where('code', $courseCode)->exists()) {
                     $skipped++;
-                    $errors[] = "Skipped: Program code $programCode already exists";
+                    $errors[] = "Skipped: Course code $courseCode already exists";
                     continue;
                 }
 
@@ -273,84 +269,16 @@ class ImportUsers extends Component
 
                 if (!$department) {
                     $skipped++;
-                    $errors[] = "Skipped: Department $deptCode not found for program $programCode";
+                    $errors[] = "Skipped: Department $deptCode not found for course $courseCode";
                     continue;
                 }
 
-                Program::create([
-                    'name' => $programName,
-                    'code' => $programCode,
+                Course::create([
+                    'name' => $courseName,
+                    'code' => $courseCode,
                     'department_id' => $department->id,
                     'duration_years' => $duration,
-                    'description' => $programName,
-                ]);
-
-                $success++;
-            }
-
-            DB::commit();
-
-            $this->importResults = [
-                'success' => $success,
-                'skipped' => $skipped,
-                'errors' => $errors,
-            ];
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            throw $e;
-        }
-    }
-
-    protected function importEnrollments($data, $header)
-    {
-        // Expected columns: registration_number, course_code
-        $success = 0;
-        $skipped = 0;
-        $errors = [];
-
-        DB::beginTransaction();
-
-        try {
-            foreach ($data as $row) {
-                if (empty($row[0])) continue;
-
-                $rowData = array_combine($header, $row);
-                $regNumber = trim($rowData['registration_number'] ?? '');
-                $courseCode = trim($rowData['course_code'] ?? '');
-
-                if (empty($regNumber) || empty($courseCode)) {
-                    $skipped++;
-                    continue;
-                }
-
-                $student = User::where('registration_number', $regNumber)->first();
-                $courseUnit = CourseUnit::where('code', $courseCode)->first();
-
-                if (!$student) {
-                    $skipped++;
-                    $errors[] = "Skipped: Student $regNumber not found";
-                    continue;
-                }
-
-                if (!$courseUnit) {
-                    $skipped++;
-                    $errors[] = "Skipped: Course Unit $courseCode not found";
-                    continue;
-                }
-
-                // Check if already enrolled
-                if (Enrollment::where('student_id', $student->id)
-                    ->where('course_id', $courseUnit->id)
-                    ->exists()) {
-                    $skipped++;
-                    continue;
-                }
-
-                Enrollment::create([
-                    'student_id' => $student->id,
-                    'course_id' => $courseUnit->id,
-                    'enrolled_at' => now(),
+                    'description' => $courseName,
                 ]);
 
                 $success++;
@@ -376,7 +304,6 @@ class ImportUsers extends Component
             'students' => "registration_number,name,email,department_code\nS2024001,John Doe,john@example.com,CS\nS2024002,Jane Smith,jane@example.com,IT",
             'lecturers' => "staff_number,name,email,department_code\nL001,Dr. Smith,smith@example.com,CS\nL002,Prof. Jones,jones@example.com,IT",
             'programs' => "program_code,program_name,department_code,duration_years\nPROG101,Bachelor of Science in Computer Science,CS,4",
-            'enrollments' => "registration_number,course_code\nS2024001,CS101\nS2024001,IT201\nS2024002,CS101",
         ];
 
         $content = $templates[$this->importType];

@@ -1,8 +1,8 @@
 <?php
 
 // ============================================
-// MIGRATION 1: Create programs table
-// database/migrations/2024_01_01_100001_create_programs_table.php
+// MIGRATION 1: Create courses table
+// database/migrations/2025_10_04_052046_create_courses_table.php
 // ============================================
 
 use Illuminate\Database\Migrations\Migration;
@@ -13,7 +13,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('programs', function (Blueprint $table) {
+        Schema::create('courses', function (Blueprint $table) {
             $table->id();
             $table->string('name'); // e.g., Bachelor of Information Technology
             $table->string('code')->unique(); // e.g., BIT, BCS
@@ -26,6 +26,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('programs');
+        Schema::dropIfExists('courses');
     }
 };

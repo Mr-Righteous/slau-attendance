@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Relations\Pivot;
 
-class ProgramCourseUnit extends Pivot
+class CourseCourseUnit extends Pivot
 {
     protected $fillable = [
         'program_id',
@@ -18,9 +18,9 @@ class ProgramCourseUnit extends Pivot
         'is_core' => 'boolean',
     ];
 
-    public function program()
+    public function course()
     {
-        return $this->belongsTo(Program::class);
+        return $this->belongsTo(Course::class);
     }
 
     public function courseUnit()

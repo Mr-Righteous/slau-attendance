@@ -2,30 +2,35 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\ClassSession;
+use App\Models\AttendanceRecord;
+use App\Models\CourseCourseUnit;
 use Illuminate\Database\Eloquent\Model;
 
 class Enrollment extends Model
 {
-    use HasFactory;
-
     protected $fillable = [
-        'course_unit_id',
         'student_id',
-        'enrolled_at',
+        'course_id',
+        'lecturer_id',
+        'department_id',
+        'semester',
+        'academic_year',
+        'credits',
     ];
-
-    protected $casts = [
-        'enrolled_at' => 'datetime',
-    ];
-
-    public function courseUnit()
-    {
-        return $this->belongsTo(CourseUnit::class, 'course_unit_id');
-    }
 
     public function student()
     {
-        return $this->belongsTo(User::class, 'student_id');
+        return $this->belongsTo(Student::class);
+    }
+
+    public function course()
+    {
+        return $this->belongsTo(Course::class);
+    }
+
+    public function lecturer()
+    {
+        return $this->belongsTo(User::class);
     }
 }

@@ -7,13 +7,13 @@
 
 namespace App\Livewire\Admin;
 
-use Livewire\Component;
-use App\Models\User;
-use App\Models\Program;
-use App\Models\ClassSession;
 use App\Models\AttendanceRecord;
-use App\Models\Enrollment;
+use App\Models\ClassSession;
+use App\Models\Course;
+use App\Models\Program;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Livewire\Component;
 
 class AdminDashboard extends Component
 {
@@ -29,8 +29,7 @@ class AdminDashboard extends Component
             'total_lecturers' => User::whereHas('roles', function ($q) {
                 $q->where('name', 'lecturer');
             })->count(),
-            'total_courses' => Program::count(),
-            'total_enrollments' => Enrollment::count(),
+            'total_courses' => Course::count(),
             'total_sessions' => ClassSession::count(),
             'total_attendance_records' => AttendanceRecord::count(),
         ];
@@ -121,15 +120,17 @@ class AdminDashboard extends Component
         ->sortBy('attendance_rate')
         ->take(10);
 
-        // Courses by enrollment count
-        $popularCourses = Program::withCount('enrollments')
-            ->orderBy('enrollments_count', 'desc')
+        // Courses by student count
+        $popularCourses = Course::withCount('students')
+            ->orderBy('students_count', 'desc')
             ->limit(5)
             ->get();
 
-        // Recent enrollments
-        $recentEnrollments = Enrollment::with(['student', 'course'])
-            ->orderBy('enrolled_at', 'desc')
+        // Recent students
+        $recentStudents = User::whereHas('roles', function ($q) {
+            $q->where('name', 'student');
+        })
+            ->orderBy('created_at', 'desc')
             ->limit(5)
             ->get();
 
@@ -141,7 +142,7 @@ class AdminDashboard extends Component
             'lowAttendanceSessions' => $lowAttendanceSessions,
             'lowAttendanceStudents' => $lowAttendanceStudents,
             'popularCourses' => $popularCourses,
-            'recentEnrollments' => $recentEnrollments,
+            'recentStudents' => $recentStudents,
         ]);
     }
 }

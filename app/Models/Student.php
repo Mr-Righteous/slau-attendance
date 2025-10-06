@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use App\Models\ClassSession;
+use App\Models\AttendanceRecord;
+use App\Models\CourseCourseUnit;
 use Illuminate\Database\Eloquent\Model;
 
 class Student extends Model
@@ -37,18 +40,7 @@ class Student extends Model
         return $this->belongsTo(Department::class);
     }
 
-    // Student's enrollments (through enrollments table)
-    public function enrollments()
-    {
-        return $this->hasMany(Enrollment::class, 'student_id', 'user_id');
-    }
 
-    // Student's courses (many-to-many through enrollments)
-    public function courseUnits()
-    {
-        return $this->belongsToMany(CourseUnit::class, 'enrollments', 'student_id', 'course_id', 'user_id')
-            ->withTimestamps();
-    }
 
     // Student's attendance records
     public function attendanceRecords()
@@ -57,17 +49,17 @@ class Student extends Model
     }
 
     // Calculate attendance percentage for a specific course
-    public function getAttendancePercentage($courseId)
+    public function getAttendancePercentage($courseUnitId)
     {
-        $totalSessions = ClassSession::where('course_id', $courseId)->count();
+        $totalSessions = ClassSession::where('course_unit_id', $courseUnitId)->count();
         
         if ($totalSessions === 0) {
             return 0;
         }
 
         $attendedSessions = AttendanceRecord::where('student_id', $this->user_id)
-            ->whereHas('classSession', function ($query) use ($courseId) {
-                $query->where('course_id', $courseId);
+            ->whereHas('classSession', function ($query) use ($courseUnitId) {
+                $query->where('course_unit_id', $courseUnitId);
             })
             ->whereIn('status', ['present', 'late'])
             ->count();
@@ -77,39 +69,19 @@ class Student extends Model
 
     // Add to Student model:
 
-    public function program()
+    public function course()
     {
-        return $this->belongsTo(Program::class);
+        return $this->belongsTo(Course::class);
     }
 
     // Get course units student should be taking based on their program, year, semester
     public function getDefaultCourseUnits()
     {
-        if (!$this->program_id || !$this->current_year || !$this->current_semester) {
+        if (!$this->course_id || !$this->current_year || !$this->current_semester) {
             return collect([]);
         }
 
-        return $this->program
+        return $this->course
             ->getCourseUnitsForYearSemester($this->current_year, $this->current_semester);
     }
-
-    // Check if student is taking a retake (enrolled in unit not matching their current year/semester)
-    public function isRetake($courseUnitId)
-    {
-        if (!$this->program_id || !$this->current_year || !$this->current_semester) {
-            return false;
-        }
-
-        $programCourseUnit = ProgramCourseUnit::where('program_id', $this->program_id)
-            ->where('course_unit_id', $courseUnitId)
-            ->first();
-
-        if (!$programCourseUnit) {
-            return false; // Not part of their program
-        }
-
-        return $programCourseUnit->default_year != $this->current_year 
-            || $programCourseUnit->default_semester != $this->current_semester;
-    }
-
 }
