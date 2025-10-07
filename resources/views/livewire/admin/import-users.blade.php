@@ -1,15 +1,22 @@
-<div class="max-w-4xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-    <div class="bg-white rounded-lg shadow-sm p-6">
+<div class="">
+    <div class="">
         <!-- Header -->
         <div class="mb-6">
-            <h2 class="text-2xl font-bold text-gray-900">Import Users & Data</h2>
-            <p class="text-sm text-gray-600 mt-1">Bulk import students, lecturers, and courses from CSV files</p>
+            <h2 class="text-2xl font-bold text-gray-900">Import Data</h2>
+            <p class="text-sm text-gray-600 mt-1">Bulk import students, lecturers, courses, and course units from CSV files</p>
         </div>
 
         <!-- Import Type Selection -->
         <div class="mb-6">
             <label class="block text-sm font-medium text-gray-700 mb-2">Import Type</label>
-            <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2"> <!-- Updated to 5 columns -->
+                <button wire:click="$set('importType', 'departments')" 
+                        type="button"
+                        class="px-4 py-3 rounded-lg border-2 transition {{ $importType === 'departments' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 hover:border-gray-300' }}">
+                    <div class="font-semibold">Departments</div>
+                    <div class="text-xs text-gray-500 mt-1">Import departments</div>
+                </button>
+
                 <button wire:click="$set('importType', 'students')" 
                         type="button"
                         class="px-4 py-3 rounded-lg border-2 transition {{ $importType === 'students' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 hover:border-gray-300' }}">
@@ -24,26 +31,38 @@
                     <div class="text-xs text-gray-500 mt-1">Import lecturers</div>
                 </button>
 
-                <button wire:click="$set('importType', 'programs')" 
+                <button wire:click="$set('importType', 'courses')" 
                         type="button"
-                        class="px-4 py-3 rounded-lg border-2 transition {{ $importType === 'programs' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 hover:border-gray-300' }}">
+                        class="px-4 py-3 rounded-lg border-2 transition {{ $importType === 'courses' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 hover:border-gray-300' }}">
                     <div class="font-semibold">Courses</div>
                     <div class="text-xs text-gray-500 mt-1">Import courses</div>
                 </button>
 
-                
+                <button wire:click="$set('importType', 'course_units')" 
+                        type="button"
+                        class="px-4 py-3 rounded-lg border-2 transition {{ $importType === 'course_units' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 hover:border-gray-300' }}">
+                    <div class="font-semibold">Course Units</div>
+                    <div class="text-xs text-gray-500 mt-1">Import course units</div>
+                </button>
             </div>
         </div>
-
         <!-- Instructions -->
         <div class="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <h3 class="font-semibold text-blue-900 mb-2">Instructions for {{ ucfirst($importType) }}</h3>
+            <h3 class="font-semibold text-blue-900 mb-2">Instructions for {{ ucfirst(str_replace('_', ' ', $importType)) }}</h3>
             
-            @if($importType === 'students')
+            @if($importType === 'departments')
                 <ul class="text-sm text-blue-800 space-y-1">
-                    <li>• CSV must include: <code class="bg-blue-100 px-1 rounded">registration_number, name, email, department_code</code></li>
+                    <li>• CSV must include: <code class="bg-blue-100 px-1 rounded">code, name</code></li>
+                    <li>• Department codes must be unique</li>
+                    <li>• Department names must be unique</li>
+                    <li>• Duplicate codes or names will be skipped</li>
+                </ul>
+            @elseif($importType === 'students')
+                <ul class="text-sm text-blue-800 space-y-1">
+                    <li>• CSV must include: <code class="bg-blue-100 px-1 rounded">registration_number, name, email, department_code, course_code, current_year, current_semester, academic_year, gender, phone</code></li>
                     <li>• Default password will be the registration number</li>
                     <li>• Students will be assigned the "student" role automatically</li>
+                    <li>• Academic progress records will be created automatically</li>
                     <li>• Duplicate emails or registration numbers will be skipped</li>
                 </ul>
             @elseif($importType === 'lecturers')
@@ -51,13 +70,20 @@
                     <li>• CSV must include: <code class="bg-blue-100 px-1 rounded">staff_number, name, email, department_code</code></li>
                     <li>• Default password will be the staff number</li>
                     <li>• Lecturers will be assigned the "lecturer" role automatically</li>
-                    <li>• Duplicate emails or staff numbers will be skipped</li>
+                    <li>• Duplicate emails will be skipped</li>
                 </ul>
-            @elseif($importType === 'programs')
+            @elseif($importType === 'courses')
                 <ul class="text-sm text-blue-800 space-y-1">
-                    <li>• CSV must include: <code class="bg-blue-100 px-1 rounded">program_code, program_name, department_code</code></li>
-                    <li>• Department must exist before importing programs</li>
-                    <li>• Duplicate program codes will be skipped</li>
+                    <li>• CSV must include: <code class="bg-blue-100 px-1 rounded">code, name, department_code, duration_years</code></li>
+                    <li>• Department must exist before importing courses</li>
+                    <li>• Duplicate course codes will be skipped</li>
+                </ul>
+            @elseif($importType === 'course_units')
+                <ul class="text-sm text-blue-800 space-y-1">
+                    <li>• CSV must include: <code class="bg-blue-100 px-1 rounded">code, name, course_code, lecturer_email, credits, semester, academic_year</code></li>
+                    <li>• Course and lecturer (if provided) must exist</li>
+                    <li>• Course units will be automatically linked to courses</li>
+                    <li>• Duplicate course unit codes will be skipped</li>
                 </ul>
             @endif
         </div>
@@ -110,8 +136,16 @@
                     wire:loading.attr="disabled"
                     type="button"
                     class="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed">
-                <span wire:loading.remove wire:target="import">Import {{ ucfirst($importType) }}</span>
-                <span wire:loading wire:target="import">Importing...</span>
+                <span wire:loading.remove wire:target="import">
+                    Import {{ ucfirst(str_replace('_', ' ', $importType)) }}
+                </span>
+                <span wire:loading wire:target="import">
+                    <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Importing...
+                </span>
             </button>
         </div>
 
@@ -122,12 +156,12 @@
                 
                 <div class="grid grid-cols-2 gap-4 mb-4">
                     <div class="p-4 bg-green-50 rounded-lg border border-green-200">
-                        <div class="text-2xl font-bold text-green-700">{{ $importResults['success'] }}</div>
+                        <div class="text-2xl font-bold text-green-700">{{ $importResults['success'] ?? 0 }}</div>
                         <div class="text-sm text-green-600">Successfully Imported</div>
                     </div>
                     
                     <div class="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                        <div class="text-2xl font-bold text-yellow-700">{{ $importResults['skipped'] }}</div>
+                        <div class="text-2xl font-bold text-yellow-700">{{ $importResults['skipped'] ?? 0 }}</div>
                         <div class="text-sm text-yellow-600">Skipped</div>
                     </div>
                 </div>
@@ -141,7 +175,7 @@
                                     <li>• {{ $error }}</li>
                                 @endforeach
                                 @if(count($importResults['errors']) > 20)
-                                    <li class="font-semibold">• ... and {{ count($importResults['errors']) - 20 }} more</li>
+                                    <li class="font-semibold">• ... and {{ count($importResults['errors']) - 20 }} more errors</li>
                                 @endif
                             </ul>
                         </div>
@@ -149,5 +183,17 @@
                 @endif
             </div>
         @endif
+
+        <!-- Additional Information -->
+        <div class="mt-8 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <h4 class="font-semibold text-gray-900 mb-2">Important Notes</h4>
+            <ul class="text-sm text-gray-600 space-y-1">
+                <li>• Ensure all departments exist before importing courses or course units</li>
+                <li>• Ensure courses exist before importing course units</li>
+                <li>• Ensure lecturers exist before assigning them to course units</li>
+                <li>• For large files, the import may take a few minutes to complete</li>
+                <li>• All imports are transactional - if any row fails, the entire import is rolled back</li>
+            </ul>
+        </div>
     </div>
 </div>

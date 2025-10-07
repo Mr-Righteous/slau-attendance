@@ -2,18 +2,21 @@
 
 namespace App\Livewire\Admin;
 
+use App\Models\Course;
 use App\Models\Department;
-use App\Models\Program;
 use App\Services\AttendanceService;
 use Livewire\Component;
 
 class AdvancedReports extends Component
 {
     // Filters
-    public $selectedProgramId = '';
+    public $selectedCourseId = ''; // Changed from selectedProgramId
     public $selectedDepartmentId = '';
     public $threshold = 75;
 
+    protected $listeners = [
+        'runReport' => 'runReport'
+    ];
     // Data
     public $atRiskStudents = [];
 
@@ -28,9 +31,17 @@ class AdvancedReports extends Component
     {
         $this->atRiskStudents = $this->attendanceService->getAtRiskStudents(
             $this->threshold,
-            $this->selectedProgramId ?: null,
+            $this->selectedCourseId ?: null, // Changed parameter
             $this->selectedDepartmentId ?: null
         );
+    }
+
+    // Update your properties to use debounced updates
+    public function updated($property)
+    {
+        if (in_array($property, ['selectedDepartmentId', 'selectedCourseId', 'threshold'])) {
+            $this->runReport();
+        }
     }
 
     public function mount()
@@ -41,11 +52,17 @@ class AdvancedReports extends Component
     public function render()
     {
         $departments = Department::orderBy('name')->get();
-        $programs = Program::orderBy('name')->get();
+        
+        // Filter courses based on selected department
+        $coursesQuery = Course::orderBy('name');
+        if ($this->selectedDepartmentId) {
+            $coursesQuery->where('department_id', $this->selectedDepartmentId);
+        }
+        $courses = $coursesQuery->get();
 
         return view('livewire.admin.advanced-reports', [
             'departments' => $departments,
-            'programs' => $programs,
+            'courses' => $courses,
         ]);
     }
 }

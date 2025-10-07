@@ -1,11 +1,16 @@
 <?php
 
+// ============================================
+// COMPONENT: MarkClassAttendance.php (UPDATED)
+// app/Livewire/Admin/MarkClassAttendance.php
+// ============================================
+
 namespace App\Livewire\Admin;
 
 use App\Models\AttendanceRecord;
 use App\Models\ClassSession;
-use App\Models\Course;
 use App\Models\CourseUnit;
+use App\Models\Course;
 use App\Models\Student;
 use App\Models\User;
 use Filament\Notifications\Notification;
@@ -19,26 +24,29 @@ class MarkClassAttendance extends Component
     public $selectedCourseId;
     public $selectedCourse;
     
-    // Step 2: Select/Create Session
-    public $sessions = [];
-    public $selectedSessionId;
-    public $selectedSession;
+    // Step 2: Select Course Unit
+    public $courseUnits = [];
+    public $selectedCourseUnitId;
+    public $selectedCourseUnit;
     
-    // Create new session fields
-    public $showCreateSession = false;
+    // Step 3: Select Lecturer & Create Session
+    public $lecturers = [];
+    public $selectedLecturerId;
+    
+    // Session details
     public $sessionDate;
     public $sessionStartTime;
     public $sessionEndTime;
     public $sessionTopic;
     public $sessionVenue;
-    public $sessionLecturerId; // Who's teaching this specific session
+    public $createdSessionId;
     
-    // Step 3: Mark Attendance
+    // Step 4: Mark Attendance
     public $students = [];
-    public $attendance = []; // student_id => status
+    public $attendance = [];
     
     // UI State
-    public $step = 1; // 1=select course, 2=select session, 3=mark attendance
+    public $step = 1; // 1=course, 2=course unit, 3=lecturer+session, 4=mark attendance
     public $searchStudent = '';
 
     public function mount()
@@ -52,74 +60,102 @@ class MarkClassAttendance extends Component
     public function selectCourse($courseId)
     {
         $this->selectedCourseId = $courseId;
-        $this->selectedCourse = CourseUnit::with(['lecturer', 'department'])->find($courseId);
-        $this->sessionLecturerId = $this->selectedCourse->lecturer_id;
+        $this->selectedCourse = Course::with('department')->find($courseId);
         
-        // Load sessions for this course
-        $this->sessions = ClassSession::where('course_id', $courseId)
-            ->with('lecturer')
-            ->orderBy('date', 'desc')
-            ->orderBy('start_time', 'desc')
+        // Load course units for this course
+        $this->courseUnits = $this->selectedCourse->courseUnits()
+            ->with(['department', 'lecturer'])
+            ->orderBy('code')
             ->get();
         
         $this->step = 2;
     }
 
-    // Step 2: Select existing session or create new
-    public function selectSession($sessionId)
+    // Step 2: Select Course Unit
+    public function selectCourseUnit($courseUnitId)
     {
-        $this->selectedSessionId = $sessionId;
-        $this->selectedSession = ClassSession::with('course', 'lecturer')->find($sessionId);
-        $this->loadStudentsForSession();
+        $this->selectedCourseUnitId = $courseUnitId;
+        $this->selectedCourseUnit = CourseUnit::with(['department', 'lecturer'])->find($courseUnitId);
+        
+        // Load lecturers
+        $this->lecturers = User::whereHas('roles', function ($query) {
+            $query->where('name', 'lecturer');
+        })->orderBy('name')->get();
+        
+        // Pre-select default lecturer if available
+        $this->selectedLecturerId = $this->selectedCourseUnit->lecturer_id;
+        
         $this->step = 3;
     }
 
-    public function toggleCreateSession()
-    {
-        $this->showCreateSession = !$this->showCreateSession;
-    }
-
-    public function createSession()
+    // Step 3: Create Session with Lecturer
+    public function createSessionAndContinue()
     {
         $this->validate([
+            'selectedLecturerId' => 'required|exists:users,id',
             'sessionDate' => 'required|date',
             'sessionStartTime' => 'required',
             'sessionEndTime' => 'required|after:sessionStartTime',
-            'sessionLecturerId' => 'required|exists:users,id',
             'sessionTopic' => 'nullable|string|max:255',
             'sessionVenue' => 'nullable|string|max:255',
         ]);
 
-        $session = ClassSession::create([
-            'course_id' => $this->selectedCourseId,
-            'lecturer_id' => $this->sessionLecturerId,
-            'date' => $this->sessionDate,
-            'start_time' => $this->sessionStartTime,
-            'end_time' => $this->sessionEndTime,
-            'topic' => $this->sessionTopic,
-            'venue' => $this->sessionVenue,
-        ]);
+        DB::beginTransaction();
 
-        $this->sessions = ClassSession::where('course_id', $this->selectedCourseId)
-            ->orderBy('date', 'desc')
-            ->get();
+        try {
+            $session = ClassSession::create([
+                'course_unit_id' => $this->selectedCourseUnitId,
+                'lecturer_id' => $this->selectedLecturerId,
+                'date' => $this->sessionDate,
+                'start_time' => $this->sessionStartTime,
+                'end_time' => $this->sessionEndTime,
+                'topic' => $this->sessionTopic,
+                'venue' => $this->sessionVenue,
+            ]);
 
-        $this->showCreateSession = false;
-        $this->selectSession($session->id);
+            $this->createdSessionId = $session->id;
+            
+            // Load students for this session
+            $this->loadStudentsForSession();
+            
+            DB::commit();
 
-        Notification::make()
-            ->title('Session created successfully')
-            ->success()
-            ->send();
+            Notification::make()
+                ->title('Session created successfully')
+                ->success()
+                ->send();
+
+            $this->step = 4;
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            Notification::make()
+                ->title('Error creating session')
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
+        }
     }
 
-    // Step 3: Load students and mark attendance
+    // Step 4: Load students
     public function loadStudentsForSession()
     {
-        // Get all students enrolled in this course
-        $this->students = Student::whereHas('enrollments', function ($query) {
-                $query->where('course_id', $this->selectedCourseId);
-            })
+        // Get the pivot data to know which year/semester this course unit belongs to for this course
+        $courseCourseUnit = DB::table('course_course_units')
+            ->where('course_id', $this->selectedCourseId)
+            ->where('course_unit_id', $this->selectedCourseUnitId)
+            ->first();
+
+        if (!$courseCourseUnit) {
+            $this->students = collect([]);
+            return;
+        }
+
+        // Get students in this course who are in the correct year/semester for this course unit
+        $this->students = Student::where('course_id', $this->selectedCourseId)
+            ->where('current_year', $courseCourseUnit->default_year)
+            ->where('current_semester', $courseCourseUnit->default_semester)
             ->with('department')
             ->when($this->searchStudent, function ($query) {
                 $query->where(function ($q) {
@@ -130,12 +166,15 @@ class MarkClassAttendance extends Component
             ->orderBy('name')
             ->get();
 
-        // Load existing attendance for this session
-        $existingAttendance = AttendanceRecord::where('class_session_id', $this->selectedSessionId)
+        // TODO: Add students from course_unit_exceptions table (retakes)
+        // This will be added later
+
+        // Load existing attendance
+        $existingAttendance = AttendanceRecord::where('class_session_id', $this->createdSessionId)
             ->pluck('status', 'student_id')
             ->toArray();
 
-        // Initialize attendance array with existing or default to absent
+        // Initialize attendance array
         foreach ($this->students as $student) {
             $this->attendance[$student->user_id] = $existingAttendance[$student->user_id] ?? 'absent';
         }
@@ -167,12 +206,12 @@ class MarkClassAttendance extends Component
             foreach ($this->attendance as $studentId => $status) {
                 AttendanceRecord::updateOrCreate(
                     [
-                        'class_session_id' => $this->selectedSessionId,
+                        'class_session_id' => $this->createdSessionId,
                         'student_id' => $studentId,
                     ],
                     [
                         'status' => $status,
-                        'marked_by' => Auth::user()->id(),
+                        'marked_by' => Auth::user()->id,
                         'marked_at' => now(),
                     ]
                 );
@@ -183,7 +222,7 @@ class MarkClassAttendance extends Component
 
             Notification::make()
                 ->title('Attendance saved successfully')
-                ->body("$marked students marked for " . $this->selectedSession->course->code)
+                ->body("$marked students marked for " . $this->selectedCourseUnit->code)
                 ->success()
                 ->send();
 
@@ -212,18 +251,12 @@ class MarkClassAttendance extends Component
 
     public function render()
     {
-        $courses = CourseUnit::with(['lecturer', 'department'])
-            ->withCount('enrollments')
-            ->orderBy('code')
+        $courses = Course::with('department')
+            ->orderBy('name')
             ->get();
-
-        $lecturers = User::whereHas('roles', function ($query) {
-            $query->where('name', 'lecturer');
-        })->orderBy('name')->get();
 
         return view('livewire.admin.mark-class-attendance', [
             'courses' => $courses,
-            'lecturers' => $lecturers,
         ]);
     }
 }

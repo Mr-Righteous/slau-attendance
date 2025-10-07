@@ -26,7 +26,11 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['role:admin'])->prefix('admin')->group(function () {
         Route::get('/import', ImportUsers::class)->name('admin.import');
         Route::get('/courses', ManageCourses::class)->name('admin.courses');
-        Route::get('/assign-courses', \App\Livewire\Admin\AssignCourses::class)->name('admin.assign-courses');
+        Route::get('/course-units', ManageCourses::class)->name('admin.course-units');
+        // Route::get('/courses', ManageCourses::class)->name('admin.courses');
+        Route::get('/manage-departments', \App\Livewire\Admin\ManageDepartments::class)->name('admin.manage-departments');
+        Route::get('/manage-course-units', \App\Livewire\Admin\ManageCourseUnits::class)->name('admin.manage-course-units');
+        Route::get('/manage-students', \App\Livewire\Admin\ManageStudents::class)->name('admin.manage-students');
         Route::get('/view-attendance', ViewAttendance::class)->name('admin.view-attendance');
         Route::get('/reports', \App\Livewire\Admin\AdvancedReports::class)->name('admin.reports');
         Route::get('/dashboard', AdminDashboard::class)->name('admin.dashboard');

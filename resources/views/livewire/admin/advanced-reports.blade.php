@@ -1,5 +1,5 @@
-<div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-    <div class="bg-white rounded-lg shadow-sm p-6">
+<div class="">
+    <div class="">
         <h1 class="text-2xl font-bold text-gray-900 mb-4">Advanced Reports: At-Risk Students</h1>
 
         <!-- Filters -->
@@ -14,11 +14,11 @@
                 </select>
             </div>
             <div>
-                <label for="program" class="block text-sm font-medium text-gray-700">Program</label>
-                <select wire:model.live="selectedProgramId" id="program" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
-                    <option value="">All Programs</option>
-                    @foreach($programs as $program)
-                        <option value="{{ $program->id }}">{{ $program->name }}</option>
+                <label for="course" class="block text-sm font-medium text-gray-700">Course</label>
+                <select wire:model.live="selectedCourseId" id="course" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                    <option value="">All Courses</option>
+                    @foreach($courses as $course)
+                        <option value="{{ $course->id }}">{{ $course->name }}</option>
                     @endforeach
                 </select>
             </div>
@@ -40,7 +40,7 @@
                 <thead class="bg-gray-50">
                     <tr>
                         <th class="px-6 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Student</th>
-                        <th class="px-6 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Program</th>
+                        <th class="px-6 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Course</th>
                         <th class="px-6 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Courses Below Threshold</th>
                     </tr>
                 </thead>
@@ -51,7 +51,7 @@
                                 <div class="font-semibold">{{ $data['student']->name }}</div>
                                 <div class="text-xs text-gray-500">{{ $data['student']->registration_number }}</div>
                             </td>
-                            <td class="px-6 py-4">{{ $data['student']->program->name ?? 'N/A' }}</td>
+                            <td class="px-6 py-4">{{ $data['student']->course->name ?? 'N/A' }}</td>
                             <td class="px-6 py-4">
                                 <ul class="space-y-1">
                                     @foreach($data['courses'] as $courseData)

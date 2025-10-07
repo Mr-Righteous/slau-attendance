@@ -29,10 +29,14 @@
 
                     <flux:navlist.item icon="home" :href="route('admin.dashboard')" :current="request()->routeIs('admin.dashboard')" wire:navigate>{{ __('Dashboard') }}</flux:navlist.item>
                     <flux:navlist.item icon="arrow-up-tray" :href="route('admin.import')" :current="request()->routeIs('admin.import')" wire:navigate>{{ __('Import Users') }}</flux:navlist.item>
+                    <flux:navlist.item icon="pencil-square" :href="route('admin.manage-departments')" :current="request()->routeIs('admin.manage-departments')" wire:navigate>{{ __('Manage Departments') }}</flux:navlist.item>
                     <flux:navlist.item icon="academic-cap" :href="route('admin.courses')" :current="request()->routeIs('admin.courses')" wire:navigate>{{ __('Manage Courses') }}</flux:navlist.item>
-                    {{-- <flux:navlist.item icon="user-group" :href="route('admin.enrollments')" :current="request()->routeIs('admin.enrollments')" wire:navigate>{{ __('Manage Enrollments') }}</flux:navlist.item> --}}
+                    <flux:navlist.item icon="pencil-square" :href="route('admin.manage-course-units')" :current="request()->routeIs('admin.manage-course-units')" wire:navigate>{{ __('Manage Course Units') }}</flux:navlist.item>
+                    <flux:navlist.item icon="academic-cap" :href="route('admin.manage-students')" :current="request()->routeIs('admin.manage-students')" wire:navigate>{{ __('Manage Students') }}</flux:navlist.item>
+                    <flux:navlist.item icon="user-group" :href="route('admin.view-attendance')" :current="request()->routeIs('admin.view-attendance')" wire:navigate>{{ __('View Attendance') }}</flux:navlist.item>
                     <flux:navlist.item icon="chart-bar" :href="route('admin.reports')" :current="request()->routeIs('admin.reports')" wire:navigate>{{ __('Advanced Reports') }}</flux:navlist.item>
                     <flux:navlist.item icon="pencil-square" :href="route('admin.attendance')" :current="request()->routeIs('admin.attendance')" wire:navigate>{{ __('Mark Attendance') }}</flux:navlist.item>
+                    
                 @endhasrole
            
 
@@ -47,16 +51,16 @@
        
             </flux:navlist>
 
+            
+
             <flux:spacer />
-
+            @include('partials.theme')
             <flux:navlist variant="outline">
-                <flux:navlist.item icon="folder-git-2" href="https://github.com/laravel/livewire-starter-kit" target="_blank">
-                {{ __('Repository') }}
+                <flux:navlist.item icon="folder-git-2" :href="route('settings.profile')" target="_blank">
+                {{ __('Settings') }}
                 </flux:navlist.item>
 
-                <flux:navlist.item icon="book-open-text" href="https://laravel.com/docs/starter-kits#livewire" target="_blank">
-                {{ __('Documentation') }}
-                </flux:navlist.item>
+                
             </flux:navlist>
 
             <!-- Desktop User Menu -->

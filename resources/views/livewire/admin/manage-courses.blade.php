@@ -1,5 +1,5 @@
-<div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-    <div class="bg-white rounded-lg shadow-sm p-6">
+<div class="">
+    <div class="">
         <!-- Header -->
         <div class="flex justify-between items-center mb-6">
             <div>
@@ -54,20 +54,15 @@
                             Course Name
                         </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Lecturer
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Department
                         </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Semester
+                            Duration
                         </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Students
                         </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Credits
-                        </th>
+                        
                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Actions
                         </th>
@@ -83,22 +78,17 @@
                                 {{ $course->name }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                {{ $course->lecturer->name ?? 'Not Assigned' }}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                 {{ $course->department->code }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                Sem {{ $course->semester }} ({{ $course->academic_year }})
+                                {{ $course->duration_years }} years
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                    {{ $course->enrollments_count }} students
+                                    {{ $course->students_count }} students
                                 </span>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                {{ $course->credits }}
-                            </td>
+                           
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                 <button wire:click="openEditModal({{ $course->id }})" 
                                         class="text-blue-600 hover:text-blue-900 mr-3">
@@ -162,17 +152,7 @@
                                     @error('code') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                                 </div>
 
-                                <!-- Credits -->
-                                <div>
-                                    <label for="credits" class="block text-sm font-medium text-gray-900 mb-2">Credits *</label>
-                                    <input type="number" 
-                                        id="credits"
-                                        wire:model="credits"
-                                        min="1"
-                                        max="10"
-                                        class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base py-2.5 px-4">
-                                    @error('credits') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                                </div>
+                                
                             </div>
 
                             <!-- Course Name -->
@@ -201,46 +181,17 @@
                                     @error('department_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                                 </div>
 
-                                <!-- Lecturer -->
-                                <div>
-                                    <label for="lecturer_id" class="block text-sm font-medium text-gray-900 mb-2">Lecturer</label>
-                                    <select id="lecturer_id"
-                                            wire:model="lecturer_id"
-                                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base py-2.5 px-4">
-                                        <option value="">-- Select Lecturer --</option>
-                                        @foreach($lecturers as $lecturer)
-                                            <option value="{{ $lecturer->id }}">{{ $lecturer->name }}</option>
-                                        @endforeach
-                                    </select>
-                                    @error('lecturer_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                                <!-- Semester -->
-                                <div>
-                                    <label for="semester" class="block text-sm font-medium text-gray-900 mb-2">Semester *</label>
-                                    <select id="semester"
-                                            wire:model="semester"
-                                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base py-2.5 px-4">
-                                        <option value="">-- Select Semester --</option>
-                                        <option value="1">Semester 1</option>
-                                        <option value="2">Semester 2</option>
-                                        <option value="Summer">Summer</option>
-                                    </select>
-                                    @error('semester') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                                </div>
-
                                 <!-- Academic Year -->
                                 <div>
-                                    <label for="academic_year" class="block text-sm font-medium text-gray-900 mb-2">Academic Year *</label>
-                                    <input type="text" 
-                                        id="academic_year"
-                                        wire:model.debounce.500ms="academic_year"
+                                    <label for="duration_years" class="block text-sm font-medium text-gray-900 mb-2">Duration (Years) *</label>
+                                    <input type="number" 
+                                        id="duration_years"
+                                        wire:model.debounce.500ms="duration_years"
                                         class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base py-2.5 px-4"
-                                        placeholder="e.g., 2024/2025">
-                                    @error('academic_year') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                                        placeholder="e.g., 3">
+                                    @error('duration_years') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                                 </div>
+                                
                             </div>
 
                             <!-- Modal Actions -->

@@ -4,12 +4,13 @@
     <!-- Session Status -->
     <x-auth-session-status class="text-center" :status="session('status')" />
 
-    <form method="POST" wire:submit="login" class="flex flex-col gap-6">
+    <form method="POST" wire:submit="login" class="flex flex-col gap-6 space-y-6">
         <!-- Email Address -->
         <flux:input
             wire:model="email"
             :label="__('Email address')"
             type="email"
+            class='text-gray-700 mb-2'
             required
             autofocus
             autocomplete="email"
@@ -23,6 +24,7 @@
                 :label="__('Password')"
                 type="password"
                 required
+                class='text-gray-700 mb-2'
                 autocomplete="current-password"
                 :placeholder="__('Password')"
                 viewable
@@ -39,8 +41,14 @@
         <flux:checkbox wire:model="remember" :label="__('Remember me')" />
 
         <div class="flex items-center justify-end">
-            <flux:button variant="primary" type="submit" class="w-full" data-test="login-button">
+            <flux:button variant="primary" type="submit" class="w-full " data-test="login-button">
                 {{ __('Log in') }}
+            </flux:button>
+        </div>
+
+        <div class="flex items-center justify-end">
+            <flux:button variant="danger" href="/" class="w-full ">
+                {{ __('Cancel') }}
             </flux:button>
         </div>
     </form>

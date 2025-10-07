@@ -1,4 +1,4 @@
-<div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+<div class="">
     <!-- Header -->
     <div class="mb-6">
         <h1 class="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
@@ -6,7 +6,7 @@
     </div>
 
     <!-- Main Stats Grid -->
-    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3 mb-6">
         <div class="bg-white p-4 rounded-lg shadow-sm border-l-4 border-blue-500">
             <div class="text-2xl font-bold text-gray-900">{{ number_format($stats['total_students']) }}</div>
             <div class="text-xs text-gray-600 mt-1">Students</div>
@@ -22,9 +22,9 @@
             <div class="text-xs text-gray-600 mt-1">Courses</div>
         </div>
 
-        <div class="bg-white p-4 rounded-lg shadow-sm border-l-4 border-yellow-500">
-            <div class="text-2xl font-bold text-gray-900">{{ number_format($stats['total_enrollments']) }}</div>
-            <div class="text-xs text-gray-600 mt-1">Enrollments</div>
+        <div class="bg-white p-4 rounded-lg shadow-sm border-l-4 border-pink-500">
+            <div class="text-2xl font-bold text-gray-900">{{ number_format($stats['total_course_units']) }}</div>
+            <div class="text-xs text-gray-600 mt-1">Course Units</div>
         </div>
 
         <div class="bg-white p-4 rounded-lg shadow-sm border-l-4 border-indigo-500">
@@ -86,9 +86,9 @@
                class="p-4 border-2 border-gray-200 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition text-center">
                 <div class="text-purple-600 font-semibold text-sm">Manage Courses</div>
             </a>
-            <a href="{{ route('admin.enrollments') }}" 
-               class="p-4 border-2 border-gray-200 rounded-lg hover:border-green-500 hover:bg-green-50 transition text-center">
-                <div class="text-green-600 font-semibold text-sm">Enrollments</div>
+            <a href="{{ route('admin.course-units') }}" 
+               class="p-4 border-2 border-gray-200 rounded-lg hover:border-pink-500 hover:bg-pink-50 transition text-center">
+                <div class="text-pink-600 font-semibold text-sm">Course Units</div>
             </a>
             <a href="{{ route('admin.view-attendance') }}" 
                class="p-4 border-2 border-gray-200 rounded-lg hover:border-yellow-500 hover:bg-yellow-50 transition text-center">
@@ -121,8 +121,14 @@
                         <div class="p-3 bg-red-50 border border-red-200 rounded-lg">
                             <div class="flex justify-between items-start">
                                 <div>
-                                    <div class="font-semibold text-gray-900">{{ $session->course->code }}</div>
-                                    <div class="text-sm text-gray-600">{{ $session->date->format('M d, Y') }} • {{ $session->start_time }}</div>
+                                    <div class="font-semibold text-gray-900">{{ $session->courseUnit->code }}</div>
+                                    <div class="text-sm text-gray-600">{{ $session->courseUnit->name }}</div>
+                                    @if($session->courseUnit->courses->isNotEmpty())
+                                        <div class="text-xs text-blue-600">
+                                            {{ $session->courseUnit->courses->first()->code }}
+                                        </div>
+                                    @endif
+                                    <div class="text-xs text-gray-500">{{ $session->date->format('M d, Y') }} • {{ $session->start_time }}</div>
                                 </div>
                                 <span class="px-2 py-1 bg-red-200 text-red-800 text-xs font-bold rounded">
                                     {{ $rate }}%
@@ -158,7 +164,7 @@
                                 <div>
                                     <div class="font-semibold text-gray-900">{{ $student->name }}</div>
                                     <div class="text-xs text-gray-600">
-                                        {{ $student->registration_number }} • {{ $student->department->name ?? 'N/A' }}
+                                        {{ $student->registration_number }} • {{ $student->course->code ?? 'N/A' }}
                                     </div>
                                 </div>
                                 <span class="px-2 py-1 text-xs font-bold rounded
@@ -167,7 +173,7 @@
                                 </span>
                             </div>
                             <div class="mt-1 text-xs text-gray-600">
-                                {{ AttendanceRecord::where('student_id', $student->id)->whereIn('status', ['present', 'late'])->count() }}/{{ $student->total_sessions }} sessions attended
+                                {{ $student->attended_sessions }}/{{ $student->total_sessions }} sessions attended
                             </div>
                         </div>
                     @endforeach
@@ -190,8 +196,13 @@
                     @foreach($recentSessions as $session)
                         <div class="flex justify-between items-start p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
                             <div>
-                                <div class="font-semibold text-gray-900">{{ $session->course->code }}</div>
-                                <div class="text-sm text-gray-600">{{ $session->course->name }}</div>
+                                <div class="font-semibold text-gray-900">{{ $session->courseUnit->code }}</div>
+                                <div class="text-sm text-gray-600">{{ $session->courseUnit->name }}</div>
+                                @if($session->courseUnit->courses->isNotEmpty())
+                                    <div class="text-xs text-blue-600">
+                                        {{ $session->courseUnit->courses->first()->code }}
+                                    </div>
+                                @endif
                                 <div class="text-xs text-gray-500 mt-1">
                                     {{ $session->date->format('M d, Y') }} • {{ $session->start_time }}
                                 </div>
@@ -219,7 +230,7 @@
                                 <div class="text-sm text-gray-600">{{ $course->name }}</div>
                             </div>
                             <span class="px-3 py-1 bg-blue-100 text-blue-800 text-sm font-bold rounded-full">
-                                {{ $course->enrollments_count }}
+                                {{ $course->students_count }}
                             </span>
                         </div>
                     @endforeach
@@ -233,7 +244,7 @@
     <!-- Recent Enrollments -->
     <div class="bg-white rounded-lg shadow-sm p-6 mt-6">
         <h3 class="text-lg font-semibold text-gray-900 mb-4">Recent Enrollments</h3>
-        @if($recentEnrollments->count() > 0)
+        @if($recentStudents->count() > 0)
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
@@ -244,18 +255,18 @@
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
-                        @foreach($recentEnrollments as $enrollment)
+                        @foreach($recentStudents as $student)
                             <tr class="hover:bg-gray-50">
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm font-medium text-gray-900">{{ $enrollment->student->name }}</div>
-                                    <div class="text-xs text-gray-500">{{ $enrollment->student->registration_number }}</div>
+                                    <div class="text-sm font-medium text-gray-900">{{ $student->name }}</div>
+                                    <div class="text-xs text-gray-500">{{ $student->registration_number }}</div>
                                 </td>
                                 <td class="px-6 py-4">
-                                    <div class="text-sm text-gray-900">{{ $enrollment->course->code }}</div>
-                                    <div class="text-xs text-gray-500">{{ $enrollment->course->name }}</div>
+                                    <div class="text-sm text-gray-900">{{ $student->course->code ?? 'N/A' }}</div>
+                                    <div class="text-xs text-gray-500">{{ $student->course->name ?? 'N/A' }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    {{ $enrollment->enrolled_at->diffForHumans() }}
+                                    {{ $student->created_at->diffForHumans() }}
                                 </td>
                             </tr>
                         @endforeach
@@ -266,4 +277,4 @@
             <div class="text-center py-8 text-gray-500 text-sm">No recent enrollments</div>
         @endif
     </div>
-</div> 
+</div>

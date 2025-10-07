@@ -1,5 +1,5 @@
-<div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-    <div class="bg-white rounded-lg shadow-sm p-6">
+<div class="">
+    <div class="bg-white rounded-lg shadow-sm">
         <!-- Header -->
         <div class="mb-6">
             <h2 class="text-2xl font-bold text-gray-900">Assign Courses to Students</h2>

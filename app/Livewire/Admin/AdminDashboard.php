@@ -1,16 +1,12 @@
 <?php
 
-// ============================================
-// COMPONENT: AdminDashboard.php
-// app/Livewire/Admin/AdminDashboard.php
-// ============================================
-
 namespace App\Livewire\Admin;
 
 use App\Models\AttendanceRecord;
 use App\Models\ClassSession;
 use App\Models\Course;
-use App\Models\Program;
+use App\Models\CourseUnit;
+use App\Models\Student;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
@@ -30,6 +26,7 @@ class AdminDashboard extends Component
                 $q->where('name', 'lecturer');
             })->count(),
             'total_courses' => Course::count(),
+            'total_course_units' => CourseUnit::count(),
             'total_sessions' => ClassSession::count(),
             'total_attendance_records' => AttendanceRecord::count(),
         ];
@@ -72,15 +69,15 @@ class AdminDashboard extends Component
         $presentCount = (clone $attendanceQuery)->whereIn('status', ['present', 'late'])->count();
         $attendanceRate = $totalAttendance > 0 ? round(($presentCount / $totalAttendance) * 100, 2) : 0;
 
-        // Recent activity
-        $recentSessions = ClassSession::with(['course'])
+        // Recent activity - using course units instead of courses
+        $recentSessions = ClassSession::with(['courseUnit.courses'])
             ->withCount('attendanceRecords')
             ->orderBy('created_at', 'desc')
             ->limit(5)
             ->get();
 
         // Low attendance alerts (sessions with < 60% attendance)
-        $lowAttendanceSessions = ClassSession::with(['course'])
+        $lowAttendanceSessions = ClassSession::with(['courseUnit.courses'])
             ->withCount([
                 'attendanceRecords',
                 'attendanceRecords as present_count' => function ($q) {
@@ -98,27 +95,35 @@ class AdminDashboard extends Component
             ->take(5);
 
         // Students with low attendance (< 75%)
-        $lowAttendanceStudents = User::whereHas('roles', function ($q) {
-            $q->where('name', 'student');
-        })
-        ->with('department')
-        ->get()
-        ->map(function ($student) {
-            $total = AttendanceRecord::where('student_id', $student->id)->count();
-            $present = AttendanceRecord::where('student_id', $student->id)
-                ->whereIn('status', ['present', 'late'])
-                ->count();
-            
-            $student->total_sessions = $total;
-            $student->attendance_rate = $total > 0 ? round(($present / $total) * 100, 2) : 0;
-            
-            return $student;
-        })
-        ->filter(function ($student) {
-            return $student->total_sessions > 0 && $student->attendance_rate < 75;
-        })
-        ->sortBy('attendance_rate')
-        ->take(10);
+        $lowAttendanceStudents = Student::with(['user', 'course', 'department'])
+            ->get()
+            ->map(function ($student) {
+                // Get attendance for student's current course units
+                $courseUnits = $student->getDefaultCourseUnits();
+                $totalSessions = 0;
+                $attendedSessions = 0;
+
+                foreach ($courseUnits as $courseUnit) {
+                    $totalSessions += ClassSession::where('course_unit_id', $courseUnit->id)->count();
+                    $attendedSessions += AttendanceRecord::where('student_id', $student->user_id)
+                        ->whereHas('classSession', function ($q) use ($courseUnit) {
+                            $q->where('course_unit_id', $courseUnit->id);
+                        })
+                        ->whereIn('status', ['present', 'late'])
+                        ->count();
+                }
+
+                $student->total_sessions = $totalSessions;
+                $student->attended_sessions = $attendedSessions;
+                $student->attendance_rate = $totalSessions > 0 ? round(($attendedSessions / $totalSessions) * 100, 2) : 0;
+                
+                return $student;
+            })
+            ->filter(function ($student) {
+                return $student->total_sessions > 0 && $student->attendance_rate < 75;
+            })
+            ->sortBy('attendance_rate')
+            ->take(10);
 
         // Courses by student count
         $popularCourses = Course::withCount('students')
@@ -127,9 +132,7 @@ class AdminDashboard extends Component
             ->get();
 
         // Recent students
-        $recentStudents = User::whereHas('roles', function ($q) {
-            $q->where('name', 'student');
-        })
+        $recentStudents = Student::with(['course', 'user'])
             ->orderBy('created_at', 'desc')
             ->limit(5)
             ->get();

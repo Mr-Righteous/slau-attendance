@@ -1,5 +1,5 @@
-<div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-    <div class="bg-white rounded-lg shadow-sm p-6">
+<div class="">
+    <div class="">
         <!-- Header -->
         <div class="flex justify-between items-center mb-6">
             <div>
@@ -74,7 +74,20 @@
                     </select>
                 </div>
 
-                @if($viewMode === 'records' && $filterCourse)
+                @if($filterCourse)
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Course Unit</label>
+                        <select wire:model.live="filterCourseUnit" 
+                                class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                            <option value="">All Course Units</option>
+                            @foreach($courseUnits as $unit)
+                                <option value="{{ $unit->id }}">{{ $unit->code }} - {{ $unit->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                @endif
+
+                @if($viewMode === 'records' && $filterCourseUnit)
                     <div>
                         <label class="block text-xs font-medium text-gray-700 mb-1">Session</label>
                         <select wire:model.live="filterSession" 
@@ -158,7 +171,7 @@
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reg No.</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Course</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Course Unit</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
@@ -175,8 +188,13 @@
                                     {{ $record->student->registration_number }}
                                 </td>
                                 <td class="px-6 py-4 text-sm text-gray-900">
-                                    <div class="font-medium">{{ $record->classSession->course->code }}</div>
-                                    <div class="text-xs text-gray-500">{{ $record->classSession->course->name }}</div>
+                                    <div class="font-medium">{{ $record->classSession->courseUnit->code }}</div>
+                                    <div class="text-xs text-gray-500">{{ $record->classSession->courseUnit->name }}</div>
+                                    @if($record->classSession->courseUnit->courses->isNotEmpty())
+                                        <div class="text-xs text-blue-600">
+                                            {{ $record->classSession->courseUnit->courses->first()->code }}
+                                        </div>
+                                    @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                     {{ $record->classSession->date->format('M d, Y') }}
@@ -194,7 +212,7 @@
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                    {{ $record->markedBy->name }}
+                                    {{ $record->markedBy->name ?? 'System' }}
                                 </td>
                             </tr>
                         @empty
@@ -212,6 +230,7 @@
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Course Unit</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Course</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date & Time</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Topic</th>
@@ -230,8 +249,16 @@
                             @endphp
                             <tr class="hover:bg-gray-50">
                                 <td class="px-6 py-4 text-sm">
-                                    <div class="font-medium text-gray-900">{{ $session->course->code }}</div>
-                                    <div class="text-xs text-gray-500">{{ $session->course->name }}</div>
+                                    <div class="font-medium text-gray-900">{{ $session->courseUnit->code }}</div>
+                                    <div class="text-xs text-gray-500">{{ $session->courseUnit->name }}</div>
+                                </td>
+                                <td class="px-6 py-4 text-sm">
+                                    @if($session->courseUnit->courses->isNotEmpty())
+                                        <div class="font-medium text-gray-900">{{ $session->courseUnit->courses->first()->code }}</div>
+                                        <div class="text-xs text-gray-500">{{ $session->courseUnit->courses->first()->name }}</div>
+                                    @else
+                                        <span class="text-gray-400">No course assigned</span>
+                                    @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                     <div>{{ $session->date->format('M d, Y') }}</div>
@@ -260,7 +287,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="px-6 py-8 text-center text-gray-500">
+                                <td colspan="8" class="px-6 py-8 text-center text-gray-500">
                                     No sessions found.
                                 </td>
                             </tr>
@@ -276,6 +303,7 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reg No.</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Department</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Course</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sessions</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Attended</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rate</th>
@@ -289,10 +317,13 @@
                                     {{ $student->name }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                    {{ $student->registration_number }}
+                                    {{ $student->student->registration_number ?? 'N/A' }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                     {{ $student->department->code ?? 'N/A' }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                    {{ $student->student->course->code ?? 'N/A' }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                     {{ $student->total_sessions }}
@@ -314,7 +345,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="px-6 py-8 text-center text-gray-500">
+                                <td colspan="8" class="px-6 py-8 text-center text-gray-500">
                                     No students found.
                                 </td>
                             </tr>

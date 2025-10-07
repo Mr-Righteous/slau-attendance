@@ -32,17 +32,12 @@ class Course extends Model
     {
         return $this->belongsToMany(
             CourseUnit::class,
-            'program_course_units',
-            'program_id',
+            'course_course_units',
+            'course_id',
             'course_unit_id'
         )
         ->withPivot(['default_year', 'default_semester', 'is_core'])
         ->withTimestamps();
-    }
-
-    public function enrollments()
-    {
-        return $this->hasMany(Enrollment::class);
     }
 
     // Get course units for specific year and semester

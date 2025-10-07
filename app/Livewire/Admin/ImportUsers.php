@@ -1,17 +1,12 @@
 <?php
 
-// ============================================
-// COMPONENT: ImportUsers.php
-// app/Livewire/Admin/ImportUsers.php
-// ============================================
-
 namespace App\Livewire\Admin;
 
 use App\Models\Course;
 use App\Models\CourseUnit;
 use App\Models\Department;
-use App\Models\Program;
 use App\Models\Student;
+use App\Models\StudentAcademicProgress;
 use App\Models\User;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
@@ -24,14 +19,14 @@ class ImportUsers extends Component
 {
     use WithFileUploads;
 
-    public $importType = 'students'; // students, lecturers, programs
+    public $importType = 'students'; // students, lecturers, courses, course_units
     public $file;
     public $importing = false;
     public $importResults = [];
 
     protected $rules = [
         'file' => 'required|file|mimes:csv,txt|max:10240',
-        'importType' => 'required|in:students,lecturers,programs',
+        'importType' => 'required|in:students,lecturers,courses,course_units,departments',
     ];
 
     public function import()
@@ -43,7 +38,7 @@ class ImportUsers extends Component
 
         try {
             $path = $this->file->getRealPath();
-            $data = array_map('str_getcsv', file($path));
+            $data = array_map(fn($line) => str_getcsv($line, ',', '"', '\\'), file($path));
             $header = array_map('trim', array_shift($data));
 
             switch ($this->importType) {
@@ -55,6 +50,12 @@ class ImportUsers extends Component
                     break;
                 case 'courses':
                     $this->importCourses($data, $header);
+                    break;
+                case 'course_units':
+                    $this->importCourseUnits($data, $header);
+                    break;
+                case 'departments': // Add this case
+                    $this->importDepartments($data, $header);
                     break;
             }
 
@@ -76,14 +77,103 @@ class ImportUsers extends Component
         $this->reset('file');
     }
 
+    protected function importDepartments($data, $header)
+{
+    $expectedHeaders = ['code', 'name'];
+    if (array_diff($expectedHeaders, $header)) {
+        throw new \Exception('Invalid CSV headers. Expected: ' . implode(', ', $expectedHeaders));
+    }
+
+    $success = 0;
+    $skipped = 0;
+    $errors = [];
+
+    DB::beginTransaction();
+
+    try {
+        foreach ($data as $row) {
+            if (empty($row[0])) continue;
+
+            $rowData = array_combine($header, $row);
+            $code = trim($rowData['code'] ?? '');
+            $name = trim($rowData['name'] ?? '');
+
+            // Validation
+            if (empty($code) || empty($name)) {
+                $skipped++;
+                $errors[] = "Skipped row: Missing required fields (code: $code)";
+                continue;
+            }
+
+            if (Department::where('code', $code)->exists()) {
+                $skipped++;
+                $errors[] = "Skipped: Department code $code already exists";
+                continue;
+            }
+
+            if (Department::where('name', $name)->exists()) {
+                $skipped++;
+                $errors[] = "Skipped: Department name $name already exists";
+                continue;
+            }
+
+            // Create department
+            Department::create([
+                'code' => strtoupper($code),
+                'name' => $name,
+            ]);
+
+            $success++;
+        }
+
+        DB::commit();
+
+        $this->importResults = [
+            'success' => $success,
+            'skipped' => $skipped,
+            'errors' => $errors,
+        ];
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        throw $e;
+    }
+}
+
     protected function importStudents($data, $header)
     {
-        // Expected columns: registration_number, name, email, department_code, program_code, current_year, current_semester, academic_year
+        set_time_limit(300);
+
+        $expectedHeaders = [
+            'registration_number', 'name', 'email', 'department_code', 'course_code',
+            'current_year', 'current_semester', 'academic_year', 'gender', 'phone'
+        ];
+
+        // Validate headers
+        if ($missing = array_diff($expectedHeaders, $header)) {
+            throw new \Exception('Invalid CSV headers. Missing: ' . implode(', ', $missing));
+        }
+
         $success = 0;
         $skipped = 0;
         $errors = [];
 
         $studentRole = Role::firstOrCreate(['name' => 'student']);
+
+        // Collect all department and course codes from the file first
+        $departmentCodes = collect($data)->pluck(array_search('department_code', $header))->unique()->filter();
+        $courseCodes = collect($data)->pluck(array_search('course_code', $header))->unique()->filter();
+
+        // Fetch departments & courses once
+        $departments = Department::whereIn('code', $departmentCodes)->pluck('id', 'code');
+        $courses = Course::whereIn('code', $courseCodes)->pluck('id', 'code');
+
+        // Pre-fetch existing users and students for duplicates
+        $emails = collect($data)->pluck(array_search('email', $header))->unique()->filter();
+        $regNumbers = collect($data)->pluck(array_search('registration_number', $header))->unique()->filter();
+
+        $existingEmails = User::whereIn('email', $emails)->pluck('email')->toArray();
+        $existingRegNos = Student::whereIn('registration_number', $regNumbers)->pluck('registration_number')->toArray();
 
         DB::beginTransaction();
 
@@ -92,60 +182,88 @@ class ImportUsers extends Component
                 if (empty($row[0])) continue;
 
                 $rowData = array_combine($header, $row);
+
                 $regNumber = trim($rowData['registration_number'] ?? '');
                 $name = trim($rowData['name'] ?? '');
                 $email = trim($rowData['email'] ?? '');
                 $deptCode = trim($rowData['department_code'] ?? '');
-                $programCode = trim($rowData['program_code'] ?? '');
-                $currentYear = trim($rowData['current_year'] ?? '');
-                $currentSemester = trim($rowData['current_semester'] ?? '');
-                $academicYear = trim($rowData['academic_year'] ?? '');
+                $courseCode = trim($rowData['course_code'] ?? '');
+                $currentYear = trim($rowData['current_year'] ?? '1');
+                $currentSemester = trim($rowData['current_semester'] ?? '1');
+                $academicYear = trim($rowData['academic_year'] ?? now()->year);
+                $gender = trim($rowData['gender'] ?? 'other');
+                $phone = trim($rowData['phone'] ?? '');
 
-                // Validation
-                if (empty($regNumber) || empty($name) || empty($email)) {
+                // Quick validation before touching DB
+                if (!$regNumber || !$name || !$email) {
                     $skipped++;
-                    $errors[] = "Skipped row: Missing required fields (reg: $regNumber)";
+                    $errors[] = "Missing required fields (Reg: $regNumber)";
                     continue;
                 }
 
-                // Check if user exists
-                if (User::where('email', $email)->exists()) {
+                if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
                     $skipped++;
-                    $errors[] = "Skipped: Email $email already exists";
+                    $errors[] = "Invalid email: $email";
                     continue;
                 }
 
-                if (User::where('registration_number', $regNumber)->exists()) {
+                if (in_array($email, $existingEmails)) {
                     $skipped++;
-                    $errors[] = "Skipped: Registration number $regNumber already exists";
+                    $errors[] = "Duplicate email: $email";
                     continue;
                 }
 
-                // Get department and program
-                $department = Department::where('code', $deptCode)->first();
-                $courses = \App\Models\Course::where('code', $programCode)->first();
+                if (in_array($regNumber, $existingRegNos)) {
+                    $skipped++;
+                    $errors[] = "Duplicate registration: $regNumber";
+                    continue;
+                }
 
-                // Create user
+                // Department and course lookup
+                $departmentId = $departments[$deptCode] ?? null;
+                if (!$departmentId) {
+                    $skipped++;
+                    $errors[] = "Department not found: $deptCode ($regNumber)";
+                    continue;
+                }
+
+                $courseId = $courses[$courseCode] ?? null;
+                if (!$courseId) {
+                    $skipped++;
+                    $errors[] = "Course not found: $courseCode ($regNumber)";
+                    continue;
+                }
+
+                // Create user and student
                 $user = User::create([
                     'name' => $name,
                     'email' => $email,
-                    'password' => Hash::make($regNumber), // Default password is reg number
-                    'registration_number' => $regNumber,
-                    'department_id' => $department?->id,
+                    'password' => Hash::make($regNumber),
+                    'department_id' => $departmentId,
                     'password_changed' => false,
                 ]);
 
-                // Create student record
-                \App\Models\Student::create([
+                $student = Student::create([
                     'user_id' => $user->id,
                     'name' => $name,
-                    'email' => $email,
+                    'gender' => $gender,
+                    'course_id' => $courseId,
                     'registration_number' => $regNumber,
-                    'department_id' => $department?->id,
-                    'course_id' => $courses?->id,
-                    'current_year' => $currentYear ?: null,
-                    'current_semester' => $currentSemester ?: null,
-                    'academic_year' => $academicYear ?: null,
+                    'department_id' => $departmentId,
+                    'current_year' => $currentYear,
+                    'current_semester' => $currentSemester,
+                    'academic_year' => $academicYear,
+                    'email' => $email,
+                    'phone' => $phone,
+                ]);
+
+                StudentAcademicProgress::create([
+                    'student_id' => $student->id,
+                    'course_id' => $courseId,
+                    'academic_year' => $academicYear,
+                    'year_of_study' => $currentYear,
+                    'semester' => $currentSemester,
+                    'status' => 'active',
                 ]);
 
                 $user->assignRole($studentRole);
@@ -159,7 +277,6 @@ class ImportUsers extends Component
                 'skipped' => $skipped,
                 'errors' => $errors,
             ];
-
         } catch (\Exception $e) {
             DB::rollBack();
             throw $e;
@@ -168,7 +285,11 @@ class ImportUsers extends Component
 
     protected function importLecturers($data, $header)
     {
-        // Expected columns: staff_number, name, email, department_code
+        $expectedHeaders = ['staff_number', 'name', 'email', 'department_code'];
+        if (array_diff($expectedHeaders, $header)) {
+            throw new \Exception('Invalid CSV headers. Expected: ' . implode(', ', $expectedHeaders));
+        }
+
         $success = 0;
         $skipped = 0;
         $errors = [];
@@ -199,19 +320,13 @@ class ImportUsers extends Component
                     continue;
                 }
 
-                if (User::where('registration_number', $staffNumber)->exists()) {
-                    $skipped++;
-                    $errors[] = "Skipped: Staff number $staffNumber already exists";
-                    continue;
-                }
-
                 $department = Department::where('code', $deptCode)->first();
 
+                // Create lecturer user (no registration_number in users table)
                 $user = User::create([
                     'name' => $name,
                     'email' => $email,
                     'password' => Hash::make($staffNumber),
-                    'registration_number' => $staffNumber,
                     'department_id' => $department?->id,
                     'password_changed' => false,
                 ]);
@@ -236,7 +351,11 @@ class ImportUsers extends Component
 
     protected function importCourses($data, $header)
     {
-        // Expected columns: program_code, program_name, department_code, duration_years
+        $expectedHeaders = ['code', 'name', 'department_code', 'duration_years'];
+        if (array_diff($expectedHeaders, $header)) {
+            throw new \Exception('Invalid CSV headers. Expected: ' . implode(', ', $expectedHeaders));
+        }
+    
         $success = 0;
         $skipped = 0;
         $errors = [];
@@ -248,8 +367,8 @@ class ImportUsers extends Component
                 if (empty($row[0])) continue;
 
                 $rowData = array_combine($header, $row);
-                $courseCode = trim($rowData['course_code'] ?? '');
-                $courseName = trim($rowData['course_name'] ?? '');
+                $courseCode = trim($rowData['code'] ?? '');
+                $courseName = trim($rowData['name'] ?? '');
                 $deptCode = trim($rowData['department_code'] ?? '');
                 $duration = trim($rowData['duration_years'] ?? '4');
 
@@ -278,7 +397,98 @@ class ImportUsers extends Component
                     'code' => $courseCode,
                     'department_id' => $department->id,
                     'duration_years' => $duration,
-                    'description' => $courseName,
+                    'description' => $courseName, // Using name as description if not provided
+                ]);
+
+                $success++;
+            }
+
+            DB::commit();
+
+            $this->importResults = [
+                'success' => $success,
+                'skipped' => $skipped,
+                'errors' => $errors,
+            ];
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
+    }
+
+    protected function importCourseUnits($data, $header)
+    {
+        $expectedHeaders = ['code', 'name', 'course_code', 'lecturer_email', 'credits', 'semester', 'academic_year'];
+        if (array_diff($expectedHeaders, $header)) {
+            throw new \Exception('Invalid CSV headers. Expected: ' . implode(', ', $expectedHeaders) . ' and received ' . implode(', ', $header));
+        }
+
+        $success = 0;
+        $skipped = 0;
+        $errors = [];
+
+        DB::beginTransaction();
+
+        try {
+            foreach ($data as $row) {
+                if (empty($row[0])) continue;
+
+                $rowData = array_combine($header, $row);
+                $code = trim($rowData['code'] ?? '');
+                $name = trim($rowData['name'] ?? '');
+                $courseCode = trim($rowData['course_code'] ?? '');
+                $lecturerEmail = trim($rowData['lecturer_email'] ?? '');
+                $credits = trim($rowData['credits'] ?? '3');
+                $semester = trim($rowData['semester'] ?? '1');
+                $academicYear = trim($rowData['academic_year'] ?? now()->year);
+
+                if (empty($code) || empty($name) || empty($courseCode)) {
+                    $skipped++;
+                    $errors[] = "Skipped row: Missing required fields (code: $code)";
+                    continue;
+                }
+
+                if (CourseUnit::where('code', $code)->exists()) {
+                    $skipped++;
+                    $errors[] = "Skipped: Course unit code $code already exists";
+                    continue;
+                }
+
+                $course = Course::where('code', $courseCode)->first();
+                if (!$course) {
+                    $skipped++;
+                    $errors[] = "Skipped: Course $courseCode not found for course unit $code";
+                    continue;
+                }
+
+                $lecturer = null;
+                if (!empty($lecturerEmail)) {
+                    $lecturer = User::where('email', $lecturerEmail)->first();
+                    if (!$lecturer) {
+                        $skipped++;
+                        $errors[] = "Skipped: Lecturer $lecturerEmail not found for course unit $code";
+                        continue;
+                    }
+                }
+
+                $courseUnit = CourseUnit::create([
+                    'code' => $code,
+                    'course_id' => $course->id,
+                    'name' => $name,
+                    'description' => $name,
+                    'department_id' => $course->department_id,
+                    'lecturer_id' => $lecturer?->id,
+                    'credits' => $credits,
+                    'semester' => $semester,
+                    'academic_year' => $academicYear,
+                ]);
+
+                // Attach to course with default year/semester
+                $courseUnit->courses()->attach($course->id, [
+                    'default_year' => 1, // Default to year 1
+                    'default_semester' => $semester,
+                    'is_core' => true,
                 ]);
 
                 $success++;
@@ -301,9 +511,11 @@ class ImportUsers extends Component
     public function downloadTemplate()
     {
         $templates = [
-            'students' => "registration_number,name,email,department_code\nS2024001,John Doe,john@example.com,CS\nS2024002,Jane Smith,jane@example.com,IT",
-            'lecturers' => "staff_number,name,email,department_code\nL001,Dr. Smith,smith@example.com,CS\nL002,Prof. Jones,jones@example.com,IT",
-            'programs' => "program_code,program_name,department_code,duration_years\nPROG101,Bachelor of Science in Computer Science,CS,4",
+            'departments' => "code,name\nCS,Computer Science\nBUS,Business Administration\nIT,Information Technology",
+            'students' => "registration_number,name,email,department_code,course_code,current_year,current_semester,academic_year,gender,phone\nBAIT/23U/F0001,John Doe,john.doe@student.slu.ac.ug,CS,BAIT,1,1,2024,male,+256700000001",
+            'lecturers' => "staff_number,name,email,department_code\nL001,Dr. John Smith,john.smith@slu.ac.ug,CS",
+            'courses' => "code,name,department_code,duration_years\nBAIT,Bachelor of Information Technology,CS,3",
+            'course_units' => "code,name,course_code,lecturer_email,credits,semester,academic_year\nCS101,Introduction to Programming,BAIT,john.smith@slu.ac.ug,3,1,2024",
         ];
 
         $content = $templates[$this->importType];
@@ -313,7 +525,6 @@ class ImportUsers extends Component
             echo $content;
         }, $filename, ['Content-Type' => 'text/csv']);
     }
-
     public function render()
     {
         return view('livewire.admin.import-users');

@@ -24,7 +24,6 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'registration_number',
         'department_id',
         'password_changed',
     ];
@@ -75,10 +74,7 @@ class User extends Authenticatable
         return $this->hasMany(CourseUnit::class, 'lecturer_id');
     }
 
-    public function enrollments()
-    {
-        return $this->hasMany(Enrollment::class, 'student_id');
-    }
+    
 
     public function attendanceRecords()
     {

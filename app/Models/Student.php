@@ -14,6 +14,7 @@ class Student extends Model
         'name',
         'gender',
         'dob',
+        'course_id',
         'registration_number',
         'department_id',
         'current_year',
@@ -83,5 +84,75 @@ class Student extends Model
 
         return $this->course
             ->getCourseUnitsForYearSemester($this->current_year, $this->current_semester);
+    }
+
+    public function academicProgress()
+    {
+        return $this->hasMany(StudentAcademicProgress::class);
+    }
+
+    public function getCurrentAcademicProgress()
+    {
+        return $this->academicProgress()
+            ->orderBy('academic_year', 'desc')
+            ->orderBy('year_of_study', 'desc')
+            ->orderBy('semester', 'desc')
+            ->first();
+    }
+
+    public function getCourseUnitsForCurrentSemester()
+    {
+        $progress = $this->getCurrentAcademicProgress();
+        
+        if (!$progress) {
+            return collect();
+        }
+
+        // Get course units based on student's current year/semester
+        return $this->course->courseUnits()
+            ->wherePivot('default_year', $progress->year_of_study)
+            ->wherePivot('default_semester', $progress->semester)
+            ->get();
+    }
+
+    // Get students eligible for a class session (including retakes)
+    public static function getEligibleStudentsForSession(ClassSession $session, $filters = [])
+    {
+        $query = self::with(['user', 'course', 'academicProgress'])
+            ->whereHas('academicProgress', function ($q) use ($session, $filters) {
+                $q->where('status', 'active');
+                
+                // Filter by academic year if provided
+                if (isset($filters['academic_year'])) {
+                    $q->where('academic_year', $filters['academic_year']);
+                }
+                
+                // Filter by year of study if provided
+                if (isset($filters['year_of_study'])) {
+                    $q->where('year_of_study', $filters['year_of_study']);
+                }
+                
+                // Filter by semester if provided
+                if (isset($filters['semester'])) {
+                    $q->where('semester', $filters['semester']);
+                }
+            });
+
+        // Filter by course if provided
+        if (isset($filters['course_id'])) {
+            $query->where('course_id', $filters['course_id']);
+        }
+
+        return $query->get()->filter(function ($student) use ($session) {
+            // Check if student should be taking this course unit in their current progression
+            $progress = $student->getCurrentAcademicProgress();
+            $courseUnit = $session->courseUnit;
+            
+            return $courseUnit->courses()
+                ->where('courses.id', $student->course_id)
+                ->wherePivot('default_year', $progress->year_of_study)
+                ->wherePivot('default_semester', $progress->semester)
+                ->exists();
+        });
     }
 }

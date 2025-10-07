@@ -3,14 +3,11 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
+use App\Models\Department;
 
 class DepartmentSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
-    public function run(): void
+    public function run()
     {
         $departments = [
             [
@@ -18,63 +15,31 @@ class DepartmentSeeder extends Seeder
                 'code' => 'CS',
             ],
             [
-                'name' => 'Information Technology',
-                'code' => 'IT',
-            ],
-            [
-                'name' => 'Mathematics',
-                'code' => 'MATH',
-            ],
-            [
-                'name' => 'Physics',
-                'code' => 'PHYS',
-            ],
-            [
-                'name' => 'Chemistry',
-                'code' => 'CHEM',
-            ],
-            [
-                'name' => 'Biology',
-                'code' => 'BIO',
-            ],
-            [
-                'name' => 'English Literature',
-                'code' => 'ENG',
-            ],
-            [
-                'name' => 'History',
-                'code' => 'HIST',
-            ],
-            [
                 'name' => 'Business Administration',
                 'code' => 'BUS',
             ],
             [
-                'name' => 'Economics',
-                'code' => 'ECON',
+                'name' => 'Engineering',
+                'code' => 'ENG',
             ],
             [
-                'name' => 'Mechanical Engineering',
-                'code' => 'ME',
+                'name' => 'Arts',
+                'code' => 'ART',
             ],
             [
-                'name' => 'Electrical Engineering',
-                'code' => 'EE',
+                'name' => 'Science',
+                'code' => 'SCI',
             ],
             [
-                'name' => 'Civil Engineering',
-                'code' => 'CE',
-            ],
-            [
-                'name' => 'Psychology',
-                'code' => 'PSY',
-            ],
-            [
-                'name' => 'Sociology',
-                'code' => 'SOC',
+                'name' => 'Medicine',
+                'code' => 'MED',
             ],
         ];
 
-        DB::table('departments')->insert($departments);
+        foreach ($departments as $department) {
+            Department::create($department);
+        }
+
+        $this->command->info('Departments seeded successfully!');
     }
 }

@@ -2,52 +2,157 @@
 
 namespace Database\Seeders;
 
-use App\Models\Course;
-use App\Models\Department;
-use App\Models\Program;
-use App\Models\Student;
-use App\Models\User;
 use Illuminate\Database\Seeder;
+use App\Models\User;
+use App\Models\Department;
+use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
 
 class UserSeeder extends Seeder
 {
-    public function run(): void
+    public function run()
     {
-        $lecturerRole = Role::where('name', 'lecturer')->first();
-        $studentRole = Role::where('name', 'student')->first();
+        // Create roles if they don't exist
+        $adminRole = Role::firstOrCreate(['name' => 'admin']);
+        $lecturerRole = Role::firstOrCreate(['name' => 'lecturer']);
+        $studentRole = Role::firstOrCreate(['name' => 'student']);
+
+        $departments = Department::all();
+
+        // Create Admin User
+        $admin = User::create([
+            'name' => 'System Administrator',
+            'email' => 'admin@university.edu',
+            'password' => Hash::make('password'),
+            'department_id' => $departments->first()->id,
+            'password_changed' => true,
+        ]);
+        $admin->assignRole($adminRole);
 
         // Create Lecturers
-        $departments = Department::all();
-        if ($departments->isEmpty()) return;
+        $lecturers = [
+            [
+                'name' => 'Dr. John Smith',
+                'email' => 'john.smith@university.edu',
+                'password' => Hash::make('password'),
+                'department_id' => $departments->where('code', 'CS')->first()->id,
+                'password_changed' => true,
+            ],
+            [
+                'name' => 'Prof. Sarah Johnson',
+                'email' => 'sarah.johnson@university.edu',
+                'password' => Hash::make('password'),
+                'department_id' => $departments->where('code', 'CS')->first()->id,
+                'password_changed' => true,
+            ],
+            [
+                'name' => 'Dr. Michael Brown',
+                'email' => 'michael.brown@university.edu',
+                'password' => Hash::make('password'),
+                'department_id' => $departments->where('code', 'BUS')->first()->id,
+                'password_changed' => true,
+            ],
+            [
+                'name' => 'Dr. Emily Davis',
+                'email' => 'emily.davis@university.edu',
+                'password' => Hash::make('password'),
+                'department_id' => $departments->where('code', 'ENG')->first()->id,
+                'password_changed' => true,
+            ],
+            [
+                'name' => 'Prof. Robert Wilson',
+                'email' => 'robert.wilson@university.edu',
+                'password' => Hash::make('password'),
+                'department_id' => $departments->where('code', 'ART')->first()->id,
+                'password_changed' => true,
+            ],
+        ];
 
-        User::factory(10)->create()->each(function ($user) use ($lecturerRole, $departments) {
-            $user->department_id = $departments->random()->id;
-            $user->save();
-            $user->assignRole($lecturerRole);
-        });
+        foreach ($lecturers as $lecturerData) {
+            $lecturer = User::create($lecturerData);
+            $lecturer->assignRole($lecturerRole);
+        }
 
         // Create Students
-        $courses = Course::all();
-        if ($courses->isEmpty()) return;
+        $students = [
+            // Computer Science Students
+            [
+                'name' => 'Alice Johnson',
+                'email' => 'alice.johnson@student.university.edu',
+                'password' => Hash::make('password'),
+                'department_id' => $departments->where('code', 'CS')->first()->id,
+                'password_changed' => false,
+            ],
+            [
+                'name' => 'Bob Miller',
+                'email' => 'bob.miller@student.university.edu',
+                'password' => Hash::make('password'),
+                'department_id' => $departments->where('code', 'CS')->first()->id,
+                'password_changed' => false,
+            ],
+            [
+                'name' => 'Carol White',
+                'email' => 'carol.white@student.university.edu',
+                'password' => Hash::make('password'),
+                'department_id' => $departments->where('code', 'CS')->first()->id,
+                'password_changed' => false,
+            ],
 
-        User::factory(50)->create()->each(function ($user) use ($studentRole, $courses) {
-            $course = $courses->random();
-            $user->department_id = $course->department_id;
-            $user->save();
-            $user->assignRole($studentRole);
+            // Business Students
+            [
+                'name' => 'David Green',
+                'email' => 'david.green@student.university.edu',
+                'password' => Hash::make('password'),
+                'department_id' => $departments->where('code', 'BUS')->first()->id,
+                'password_changed' => false,
+            ],
+            [
+                'name' => 'Eva Black',
+                'email' => 'eva.black@student.university.edu',
+                'password' => Hash::make('password'),
+                'department_id' => $departments->where('code', 'BUS')->first()->id,
+                'password_changed' => false,
+            ],
 
-            Student::create([
-                'user_id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'registration_number' => $user->registration_number,
-                'course_id' => $course->id,
-                'department_id' => $course->department_id,
-                'current_year' => rand(1, $course->duration_years),
-                'current_semester' => rand(1, 2),
-                'academic_year' => '2024/2025',
-            ]);
-        });
+            // Engineering Students
+            [
+                'name' => 'Frank Taylor',
+                'email' => 'frank.taylor@student.university.edu',
+                'password' => Hash::make('password'),
+                'department_id' => $departments->where('code', 'ENG')->first()->id,
+                'password_changed' => false,
+            ],
+            [
+                'name' => 'Grace Lee',
+                'email' => 'grace.lee@student.university.edu',
+                'password' => Hash::make('password'),
+                'department_id' => $departments->where('code', 'ENG')->first()->id,
+                'password_changed' => false,
+            ],
+
+            // Arts Students
+            [
+                'name' => 'Henry Clark',
+                'email' => 'henry.clark@student.university.edu',
+                'password' => Hash::make('password'),
+                'department_id' => $departments->where('code', 'ART')->first()->id,
+                'password_changed' => false,
+            ],
+            [
+                'name' => 'Ivy Martinez',
+                'email' => 'ivy.martinez@student.university.edu',
+                'password' => Hash::make('password'),
+                'department_id' => $departments->where('code', 'ART')->first()->id,
+                'password_changed' => false,
+            ],
+        ];
+
+        foreach ($students as $studentData) {
+            $student = User::create($studentData);
+            $student->assignRole($studentRole);
+        }
+
+        $this->command->info('Users seeded successfully with Spatie roles!');
     }
 }

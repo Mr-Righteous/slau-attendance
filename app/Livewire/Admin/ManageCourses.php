@@ -22,28 +22,23 @@ class ManageCourses extends Component
     // Form fields
     public $code;
     public $name;
-    public $lecturer_id;
     public $department_id;
-    public $semester;
-    public $academic_year;
-    public $credits = 3;
+    public $duration_years;
+    public $description;
     
     // Filters
     public $search = '';
     public $filterDepartment = '';
-    public $filterSemester = '';
 
     protected $rules = [
         'code' => 'required|string|max:20|unique:courses,code',
         'name' => 'required|string|max:255',
-        'lecturer_id' => 'nullable|exists:users,id',
         'department_id' => 'required|exists:departments,id',
-        'semester' => 'required|string|max:20',
-        'academic_year' => 'required|string|max:20',
-        'credits' => 'required|integer|min:1|max:10',
+        'duration_years' => 'required|integer|min:1|max:4',
+        'description' => 'nullable|string',
     ];
 
-    protected $queryString = ['search', 'filterDepartment', 'filterSemester'];
+    protected $queryString = ['search', 'filterDepartment'];
 
     public function updatingSearch()
     {
@@ -55,7 +50,6 @@ class ManageCourses extends Component
         $this->resetForm();
         $this->editMode = false;
         $this->showModal = true;
-        $this->academic_year = date('Y') . '/' . (date('Y') + 1);
     }
 
     public function openEditModal($id)
@@ -66,11 +60,9 @@ class ManageCourses extends Component
         $this->courseId = $course->id;
         $this->code = $course->code;
         $this->name = $course->name;
-        $this->lecturer_id = $course->lecturer_id;
         $this->department_id = $course->department_id;
-        $this->semester = $course->semester;
-        $this->academic_year = $course->academic_year;
-        $this->credits = $course->credits;
+        $this->duration_years = $course->duration_years;
+        $this->description = $course->description;
         
         $this->editMode = true;
         $this->showModal = true;
@@ -87,11 +79,9 @@ class ManageCourses extends Component
         $this->courseId = null;
         $this->code = '';
         $this->name = '';
-        $this->lecturer_id = null;
         $this->department_id = null;
-        $this->semester = '';
-        $this->academic_year = '';
-        $this->credits = 3;
+        $this->duration_years = null;
+        $this->description = '';
         $this->resetErrorBag();
     }
 
@@ -111,11 +101,9 @@ class ManageCourses extends Component
                 $course->update([
                     'code' => $this->code,
                     'name' => $this->name,
-                    'lecturer_id' => $this->lecturer_id,
                     'department_id' => $this->department_id,
-                    'semester' => $this->semester,
-                    'academic_year' => $this->academic_year,
-                    'credits' => $this->credits,
+                    'duration_years' => $this->duration_years,
+                    'description' => $this->description,
                 ]);
 
                 $message = 'Course updated successfully';
@@ -123,11 +111,9 @@ class ManageCourses extends Component
                 Course::create([
                     'code' => $this->code,
                     'name' => $this->name,
-                    'lecturer_id' => $this->lecturer_id,
                     'department_id' => $this->department_id,
-                    'semester' => $this->semester,
-                    'academic_year' => $this->academic_year,
-                    'credits' => $this->credits,
+                    'duration_years' => $this->duration_years,
+                    'description' => $this->description,
                 ]);
 
                 $message = 'Course created successfully';
@@ -197,7 +183,7 @@ class ManageCourses extends Component
     public function render()
     {
         $courses = Course::query()
-            ->with(['lecturer', 'department'])
+            ->with(['department'])
             ->withCount('students')
             ->when($this->search, function ($query) {
                 $query->where(function ($q) {
@@ -208,21 +194,13 @@ class ManageCourses extends Component
             ->when($this->filterDepartment, function ($query) {
                 $query->where('department_id', $this->filterDepartment);
             })
-            ->when($this->filterSemester, function ($query) {
-                $query->where('semester', $this->filterSemester);
-            })
             ->orderBy('code')
             ->paginate(15);
-
-        $lecturers = User::whereHas('roles', function ($query) {
-            $query->where('name', 'lecturer');
-        })->orderBy('name')->get();
 
         $departments = Department::orderBy('name')->get();
 
         return view('livewire.admin.manage-courses', [
             'courses' => $courses,
-            'lecturers' => $lecturers,
             'departments' => $departments,
         ]);
     }

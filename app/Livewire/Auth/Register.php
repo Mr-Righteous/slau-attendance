@@ -41,6 +41,10 @@ class Register extends Component
 
         Session::regenerate();
 
-        $this->redirect(route('dashboard', absolute: false), navigate: true);
+        if (Auth::user()->hasRole('admin')) {
+            $this->redirect(route('admin.dashboard', absolute: false), navigate: true);
+        } else {
+            $this->redirect(route('dashboard', absolute: false), navigate: true);
+        }
     }
 }

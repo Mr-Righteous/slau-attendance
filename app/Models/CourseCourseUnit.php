@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
 class CourseCourseUnit extends Pivot
 {
     protected $fillable = [
-        'program_id',
+        'course_id',
         'course_unit_id',
         'default_year',
         'default_semester',

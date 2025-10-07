@@ -1,10 +1,5 @@
 <?php
 
-// ============================================
-// COMPONENT: ViewAttendance.php
-// app/Livewire/Admin/ViewAttendance.php
-// ============================================
-
 namespace App\Livewire\Admin;
 
 use Livewire\Component;
@@ -12,6 +7,7 @@ use Livewire\WithPagination;
 use App\Models\AttendanceRecord;
 use App\Models\ClassSession;
 use App\Models\Course;
+use App\Models\CourseUnit;
 use App\Models\Department;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -22,6 +18,7 @@ class ViewAttendance extends Component
 
     // Filters
     public $filterCourse = '';
+    public $filterCourseUnit = '';
     public $filterSession = '';
     public $filterStatus = '';
     public $filterDepartment = '';
@@ -37,6 +34,7 @@ class ViewAttendance extends Component
 
     protected $queryString = [
         'filterCourse',
+        'filterCourseUnit',
         'filterStatus',
         'searchStudent',
         'viewMode',
@@ -48,7 +46,14 @@ class ViewAttendance extends Component
         $this->dateTo = now()->format('Y-m-d');
     }
 
-    public function updatingFilterCourse($value)
+    public function updatedFilterCourse($value)
+    {
+        $this->resetPage();
+        $this->filterCourseUnit = '';
+        $this->filterSession = '';
+    }
+
+    public function updatedFilterCourseUnit($value)
     {
         $this->resetPage();
         $this->filterSession = '';
@@ -68,6 +73,7 @@ class ViewAttendance extends Component
     {
         $this->reset([
             'filterCourse',
+            'filterCourseUnit',
             'filterSession',
             'filterStatus',
             'filterDepartment',
@@ -104,8 +110,15 @@ class ViewAttendance extends Component
                 });
             })
             ->when($this->filterCourse, function ($q) {
+                $q->whereHas('classSession.courseUnit', function ($query) {
+                    $query->whereHas('courses', function ($q) {
+                        $q->where('courses.id', $this->filterCourse);
+                    });
+                });
+            })
+            ->when($this->filterCourseUnit, function ($q) {
                 $q->whereHas('classSession', function ($query) {
-                    $query->where('course_id', $this->filterCourse);
+                    $query->where('course_unit_id', $this->filterCourseUnit);
                 });
             });
 
@@ -131,10 +144,18 @@ class ViewAttendance extends Component
         $courses = Course::orderBy('code')->get();
         $departments = Department::orderBy('name')->get();
 
-        // Get sessions for selected course
-        $sessions = [];
+        // Get course units for selected course
+        $courseUnits = [];
         if ($this->filterCourse) {
-            $sessions = ClassSession::where('course_id', $this->filterCourse)
+            $courseUnits = CourseUnit::whereHas('courses', function ($query) {
+                $query->where('courses.id', $this->filterCourse);
+            })->orderBy('name')->get();
+        }
+
+        // Get sessions for selected course unit
+        $sessions = [];
+        if ($this->filterCourseUnit) {
+            $sessions = ClassSession::where('course_unit_id', $this->filterCourseUnit)
                 ->orderBy('date', 'desc')
                 ->get();
         }
@@ -144,10 +165,17 @@ class ViewAttendance extends Component
         // View Mode: Individual Records
         if ($this->viewMode === 'records') {
             $data = AttendanceRecord::query()
-                ->with(['student.department', 'classSession.course', 'markedBy'])
+                ->with(['student.department', 'classSession.courseUnit.courses', 'markedBy'])
                 ->when($this->filterCourse, function ($query) {
+                    $query->whereHas('classSession.courseUnit', function ($q) {
+                        $q->whereHas('courses', function ($query) {
+                            $query->where('courses.id', $this->filterCourse);
+                        });
+                    });
+                })
+                ->when($this->filterCourseUnit, function ($query) {
                     $query->whereHas('classSession', function ($q) {
-                        $q->where('course_id', $this->filterCourse);
+                        $q->where('course_unit_id', $this->filterCourseUnit);
                     });
                 })
                 ->when($this->filterSession, function ($query) {
@@ -184,7 +212,7 @@ class ViewAttendance extends Component
         // View Mode: By Session
         if ($this->viewMode === 'sessions') {
             $data = ClassSession::query()
-                ->with(['course.department', 'attendanceRecords'])
+                ->with(['courseUnit.courses.department', 'attendanceRecords'])
                 ->withCount([
                     'attendanceRecords',
                     'attendanceRecords as present_count' => function ($query) {
@@ -198,7 +226,14 @@ class ViewAttendance extends Component
                     },
                 ])
                 ->when($this->filterCourse, function ($query) {
-                    $query->where('course_id', $this->filterCourse);
+                    $query->whereHas('courseUnit', function ($q) {
+                        $q->whereHas('courses', function ($query) {
+                            $query->where('courses.id', $this->filterCourse);
+                        });
+                    });
+                })
+                ->when($this->filterCourseUnit, function ($query) {
+                    $query->where('course_unit_id', $this->filterCourseUnit);
                 })
                 ->when($this->dateFrom, function ($query) {
                     $query->where('date', '>=', $this->dateFrom);
@@ -216,11 +251,13 @@ class ViewAttendance extends Component
                 ->whereHas('roles', function ($query) {
                     $query->where('name', 'student');
                 })
-                ->with(['department'])
+                ->with(['department', 'student.course'])
                 ->when($this->searchStudent, function ($query) {
                     $query->where(function ($q) {
                         $q->where('name', 'like', '%' . $this->searchStudent . '%')
-                          ->orWhere('registration_number', 'like', '%' . $this->searchStudent . '%');
+                          ->orWhereHas('student', function ($q) {
+                              $q->where('registration_number', 'like', '%' . $this->searchStudent . '%');
+                          });
                     });
                 })
                 ->when($this->filterDepartment, function ($query) {
@@ -229,7 +266,7 @@ class ViewAttendance extends Component
 
             if ($this->filterCourse) {
                 // Filter students enrolled in specific course
-                $studentsQuery->whereHas('enrollments', function ($query) {
+                $studentsQuery->whereHas('student', function ($query) {
                     $query->where('course_id', $this->filterCourse);
                 });
             }
@@ -239,9 +276,16 @@ class ViewAttendance extends Component
             // Add attendance stats for each student
             foreach ($data as $student) {
                 $attendanceQuery = AttendanceRecord::where('student_id', $student->id)
-                    ->when($this->filterCourse, function ($query) {
+                    ->when($this->filterCourse, function ($query) use ($student) {
+                        $query->whereHas('classSession.courseUnit', function ($q) use ($student) {
+                            $q->whereHas('courses', function ($query) {
+                                $query->where('courses.id', $this->filterCourse);
+                            });
+                        });
+                    })
+                    ->when($this->filterCourseUnit, function ($query) {
                         $query->whereHas('classSession', function ($q) {
-                            $q->where('course_id', $this->filterCourse);
+                            $q->where('course_unit_id', $this->filterCourseUnit);
                         });
                     })
                     ->when($this->dateFrom, function ($query) {
@@ -267,6 +311,7 @@ class ViewAttendance extends Component
         return view('livewire.admin.view-attendance', [
             'data' => $data,
             'courses' => $courses,
+            'courseUnits' => $courseUnits,
             'sessions' => $sessions,
             'departments' => $departments,
             'stats' => $this->stats,

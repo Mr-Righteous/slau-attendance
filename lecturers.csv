@@ -1,0 +1,11 @@
+staff_number,name,email,department_code
+L001,Dr. Alice Johnson,alice.johnson@university.edu,CS
+L002,Prof. Bob Smith,bob.smith@university.edu,IT
+L003,Dr. Clara Lee,clara.lee@university.edu,MATH
+L004,Prof. David Brown,david.brown@university.edu,PHYS
+L005,Dr. Emma Wilson,emma.wilson@university.edu,CHEM
+L006,Prof. Frank Davis,frank.davis@university.edu,BIO
+L007,Dr. Grace Taylor,grace.taylor@university.edu,ENG
+L008,Prof. Henry Clark,henry.clark@university.edu,BUS
+L009,Dr. Isabella Martinez,isabella.martinez@university.edu,ECON
+L010,Prof. James Anderson,james.anderson@university.edu,ME
