@@ -40,17 +40,17 @@
         <!-- Remember Me -->
         <flux:checkbox wire:model="remember" :label="__('Remember me')" />
 
-        <div class="flex items-center justify-end">
+        <div class="flex items-center justify-end gap-2">
             <flux:button variant="primary" type="submit" class="w-full " data-test="login-button">
                 {{ __('Log in') }}
             </flux:button>
-        </div>
 
-        <div class="flex items-center justify-end">
             <flux:button variant="danger" href="/" class="w-full ">
                 {{ __('Cancel') }}
             </flux:button>
         </div>
+
+       
     </form>
 
     @if (Route::has('register'))
