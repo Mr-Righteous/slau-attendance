@@ -4,6 +4,7 @@
 
         <!-- Filters -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6 p-4 border rounded-lg">
+            @hasanyrole(['faculty-dean','super-admin','big-admin'])
             <div>
                 <label for="department" class="block text-sm font-medium text-gray-700">Department</label>
                 <select wire:model.live="selectedDepartmentId" id="department" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
@@ -13,6 +14,7 @@
                     @endforeach
                 </select>
             </div>
+            @endhasanyrole
             <div>
                 <label for="course" class="block text-sm font-medium text-gray-700">Course</label>
                 <select wire:model.live="selectedCourseId" id="course" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">

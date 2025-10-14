@@ -3,7 +3,9 @@
 namespace App\Livewire\Admin;
 
 use App\Models\Department;
+use Filament\Actions\DeleteAction;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -45,6 +47,7 @@ class ManageDepartments extends Component
             Department::create([
                 'name' => $this->name,
                 'code' => strtoupper($this->code),
+                'faculty_id' => Auth::user()->department->faculty->id,
             ]);
 
             Notification::make()
@@ -110,7 +113,16 @@ class ManageDepartments extends Component
     {
         try {
             $department = Department::findOrFail($departmentId);
-            
+
+            if ($departmentId == Auth::user()->department->id) {
+                Notification::make()
+                    ->title('Cannot delete department')
+                    ->body('This is the department that you belong to as well.')
+                    ->warning()
+                    ->send();
+                return;
+            }
+
             // Check if department has related records
             if ($department->users()->exists() || $department->courses()->exists()) {
                 Notification::make()
@@ -142,6 +154,17 @@ class ManageDepartments extends Component
         $departments = Department::withCount(['users', 'courses'])
             ->orderBy('name')
             ->paginate(10);
+
+        if (Auth::user()->hasrole('faculty-dean')) 
+        {
+            // $myFaculty = Auth::user()->department->faculty;
+
+            $departments = Department::where('faculty_id', Auth::user()->myFaculty()->id)
+            ->withCount(['users', 'courses'])
+            ->orderBy('name')
+            ->paginate(10);
+
+        }
 
         return view('livewire.admin.manage-departments', [
             'departments' => $departments,

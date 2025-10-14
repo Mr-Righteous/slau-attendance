@@ -3,6 +3,9 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+
+use App\Traits\HasFacultyScope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -14,6 +17,7 @@ class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable, TwoFactorAuthenticatable, HasRoles;
+    use HasFacultyScope;
 
     /**
      * The attributes that are mass assignable.
@@ -23,6 +27,7 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'purpose',
         'password',
         'department_id',
         'password_changed',
@@ -116,6 +121,33 @@ class User extends Authenticatable
     public function student()
     {
         return $this->hasOne(Student::class);
+    }
+
+    public function myFaculty()
+    {
+        if (!$this->hasAnyRole('super-admin','big-admin'))
+        {
+            return $this->department->faculty;
+        }
+    }
+
+    public function taughtSessions()
+    {
+        return $this->hasMany(ClassSession::class, 'lecturer_id');
+    }
+
+    public function scopeForUserRole(Builder $query, User $user)
+    {
+        if ($user->hasRole('dpt-hod'))
+        {
+            $myFacultyId = Faculty::findOrFail($user->department->faculty_id)->id;
+            return $query->where('department_id', $user->department_id);
+        } elseif ($user->hasRole('faculty-dean')) {
+            $myFacultyId = Faculty::findOrFail($user->department->faculty_id)->id;
+            return $query->inFaculty($myFacultyId);
+        } else {
+            return $query;
+        }
     }
 }
 

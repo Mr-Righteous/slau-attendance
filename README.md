@@ -63,15 +63,6 @@ php artisan vendor:publish --provider="Spatie\Permission\PermissionServiceProvid
 php artisan migrate
 ```
 
-### 4. Create Sample data files 
-
-```bash
-cp scripts/generate_all.py ~/Desktop
-cd ~/Desktop
-python3 generate_all.py
-
-```
-
 ### 5. Compile Assets
 
 ```bash
@@ -94,8 +85,7 @@ composer run dev
 Visit: `http://localhost:8000` OR `http://127.0.0.1:8000`
 
 **Admin Login:**
-- Email: `admin@example.com`
-- Password: `password`
+Check for any of the admin's credentials from the AdminAndRoleSeeder.php file.
 
 ## Features
 
@@ -118,29 +108,11 @@ Visit: `http://localhost:8000` OR `http://127.0.0.1:8000`
 - View attendance percentage
 - Overall attendance status
 
-## CSV Import Format
-
-### Students Import
-**File:** `students.csv`
-
-
-### Lecturers Import
-**File:** `lecturers.csv`
-
-
-### Courses Import
-**File:** `courses.csv`
-
-
 ## Import Order
 
-Follow this order when importing data:
+Only student imports are accepted and the csv is provided in the scripts folder of the project :
 
-1. **Departments** (via CSV import)
-2. **Courses** (via CSV import - requires lecturers to exist)
-3. **Lecturers** (via CSV import)
-4. **CourseUnits** (via CSV import - requires lecturers to exist)
-5. **Students** (via CSV import)
+**Students** students_data.csv(via CSV import)
 
 ## Default Passwords
 

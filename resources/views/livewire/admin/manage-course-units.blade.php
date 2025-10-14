@@ -22,16 +22,18 @@
                            placeholder="Search by code or name..."
                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Department</label>
-                    <select wire:model.live="departmentFilter" 
-                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
-                        <option value="">All Departments</option>
-                        @foreach($departments as $department)
-                            <option value="{{ $department->id }}">{{ $department->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
+                @hasanyrole(['super-admin','big-admin','faculty-dean'])
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                        <select wire:model.live="departmentFilter" 
+                                class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                            <option value="">All Departments</option>
+                            @foreach($departments as $department)
+                                <option value="{{ $department->id }}">{{ $department->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                @endhasanyrole
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Semester</label>
                     <select wire:model.live="semesterFilter" 
@@ -42,20 +44,20 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Academic Year</label>
-                    <select wire:model.live="academicYearFilter" 
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Default Year</label>
+                    <select wire:model.live="defaultYearFilter" 
                             class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
                         <option value="">All Years</option>
-                        @for($year = 2020; $year <= 2030; $year++)
-                            <option value="{{ $year }}">{{ $year }}</option>
+                        @for($year = 1; $year <= 6; $year++)
+                            <option value="{{ $year }}">Year {{ $year }}</option>
                         @endfor
                     </select>
                 </div>
             </div>
         </div>
-
+{{-- @dd($courseUnits) --}}
         <!-- Course Units Table -->
-        <div class="p-6">
+        <div class="">
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
@@ -104,11 +106,11 @@
                                         </div>
                                         <div class="flex items-center">
                                             <span class="font-medium">Semester:</span>
-                                            <span class="ml-1">{{ $courseUnit->semester }}</span>
+                                            <span class="ml-1">{{ $courseUnit->default_semester }}</span>
                                         </div>
                                         <div class="flex items-center">
                                             <span class="font-medium">Year:</span>
-                                            <span class="ml-1">{{ $courseUnit->academic_year }}</span>
+                                            <span class="ml-1">{{ $courseUnit->default_year }}</span>
                                         </div>
                                         <div class="flex items-center">
                                             <span class="font-medium">Courses:</span>
@@ -121,21 +123,27 @@
                                     </div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    <div class="flex space-x-2">
-                                        <button wire:click="editCourseUnit({{ $courseUnit->id }})"
-                                                class="text-blue-600 hover:text-blue-900 transition text-sm">
-                                            Edit
-                                        </button>
-                                        <button wire:click="linkToCourse({{ $courseUnit->id }})"
-                                                class="text-green-600 hover:text-green-900 transition text-sm">
-                                            Link Courses
-                                        </button>
-                                        <button wire:click="deleteCourseUnit({{ $courseUnit->id }})"
-                                                wire:confirm="Are you sure you want to delete this course unit?"
-                                                class="text-red-600 hover:text-red-900 transition text-sm">
-                                            Delete
-                                        </button>
-                                    </div>
+                                    {{-- <div class="space-x-2"> --}}
+                                        <div>
+                                            <button wire:click="editCourseUnit({{ $courseUnit->id }})"
+                                                    class="text-blue-600 hover:text-blue-900 transition text-sm">
+                                                Edit
+                                            </button>
+                                        </div>
+                                        <div>
+                                            <button wire:click="linkToCourse({{ $courseUnit->id }})"
+                                                    class="text-green-600 hover:text-green-900 transition text-sm">
+                                                Link Courses
+                                            </button>
+                                        </div>
+                                        <div>
+                                            <button wire:click="deleteCourseUnit({{ $courseUnit->id }})"
+                                                    wire:confirm="Are you sure you want to delete this course unit?"
+                                                    class="text-red-600 hover:text-red-900 transition text-sm">
+                                                Delete
+                                            </button>
+                                        </div>
+                                    {{-- </div> --}}
                                 </td>
                             </tr>
                         @empty

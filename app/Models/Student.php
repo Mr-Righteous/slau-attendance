@@ -2,13 +2,17 @@
 
 namespace App\Models;
 
-use App\Models\ClassSession;
 use App\Models\AttendanceRecord;
+use App\Models\ClassSession;
 use App\Models\CourseCourseUnit;
+use App\Traits\HasFacultyScope;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 
 class Student extends Model
 {
+    use HasFacultyScope;
+
     protected $fillable = [
         'user_id',
         'name',
@@ -113,6 +117,22 @@ class Student extends Model
             ->wherePivot('default_year', $progress->year_of_study)
             ->wherePivot('default_semester', $progress->semester)
             ->get();
+    }
+
+    
+
+    public function scopeForUserRole(Builder $query, User $user)
+    {
+        if ($user->hasRole('dpt-hod'))
+        {
+            $myFacultyId = Faculty::findOrFail($user->department->faculty_id)->id;
+            return $query->with('user')->where('department_id', $user->department_id);
+        } elseif ($user->hasRole('faculty-dean')) {
+            $myFacultyId = Faculty::findOrFail($user->department->faculty_id)->id;
+            return $query->inFaculty($myFacultyId);
+        } else {
+            return $query;
+        }
     }
 
     // Get students eligible for a class session (including retakes)

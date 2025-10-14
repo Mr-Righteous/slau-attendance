@@ -1,10 +1,5 @@
 <?php
 
-// ============================================
-// COMPONENT: MarkClassAttendance.php (UPDATED)
-// app/Livewire/Admin/MarkClassAttendance.php
-// ============================================
-
 namespace App\Livewire\Admin;
 
 use App\Models\AttendanceRecord;
@@ -25,15 +20,16 @@ class MarkClassAttendance extends Component
     public $selectedCourse;
     
     // Step 2: Select Course Unit
-    public $courseUnits = [];
+    public $courseUnits;
     public $selectedCourseUnitId;
     public $selectedCourseUnit;
     
     // Step 3: Select Lecturer & Create Session
-    public $lecturers = [];
+    public $lecturers;
     public $selectedLecturerId;
     
     // Session details
+    public $sessionWeek;
     public $sessionDate;
     public $sessionStartTime;
     public $sessionEndTime;
@@ -42,12 +38,24 @@ class MarkClassAttendance extends Component
     public $createdSessionId;
     
     // Step 4: Mark Attendance
-    public $students = [];
+    public $students;
+    public $manualStudents; // Students added manually
     public $attendance = [];
     
     // UI State
-    public $step = 1; // 1=course, 2=course unit, 3=lecturer+session, 4=mark attendance
+    public $step = 1;
     public $searchStudent = '';
+    
+    // Add Students Modal State
+    public $showAddStudentsModal = false;
+    public $modalSearchStudent = '';
+    public $availableStudents;
+    public $selectedStudentsToAdd = [];
+    public $modalFilters = [
+        'year' => '',
+        'semester' => '',
+        'show_all_years' => false,
+    ];
 
     public function mount()
     {
@@ -62,7 +70,6 @@ class MarkClassAttendance extends Component
         $this->selectedCourseId = $courseId;
         $this->selectedCourse = Course::with('department')->find($courseId);
         
-        // Load course units for this course
         $this->courseUnits = $this->selectedCourse->courseUnits()
             ->with(['department', 'lecturer'])
             ->orderBy('code')
@@ -77,22 +84,21 @@ class MarkClassAttendance extends Component
         $this->selectedCourseUnitId = $courseUnitId;
         $this->selectedCourseUnit = CourseUnit::with(['department', 'lecturer'])->find($courseUnitId);
         
-        // Load lecturers
-        $this->lecturers = User::whereHas('roles', function ($query) {
+        $this->lecturers = User::forUserRole(Auth::user())->whereHas('roles', function ($query) {
             $query->where('name', 'lecturer');
         })->orderBy('name')->get();
         
-        // Pre-select default lecturer if available
         $this->selectedLecturerId = $this->selectedCourseUnit->lecturer_id;
         
         $this->step = 3;
     }
 
-    // Step 3: Create Session with Lecturer
+    // Step 3: Create Session
     public function createSessionAndContinue()
     {
         $this->validate([
             'selectedLecturerId' => 'required|exists:users,id',
+            'sessionWeek' => 'required|integer',
             'sessionDate' => 'required|date',
             'sessionStartTime' => 'required',
             'sessionEndTime' => 'required|after:sessionStartTime',
@@ -106,6 +112,7 @@ class MarkClassAttendance extends Component
             $session = ClassSession::create([
                 'course_unit_id' => $this->selectedCourseUnitId,
                 'lecturer_id' => $this->selectedLecturerId,
+                'week' => $this->sessionWeek,
                 'date' => $this->sessionDate,
                 'start_time' => $this->sessionStartTime,
                 'end_time' => $this->sessionEndTime,
@@ -114,8 +121,6 @@ class MarkClassAttendance extends Component
             ]);
 
             $this->createdSessionId = $session->id;
-            
-            // Load students for this session
             $this->loadStudentsForSession();
             
             DB::commit();
@@ -141,7 +146,6 @@ class MarkClassAttendance extends Component
     // Step 4: Load students
     public function loadStudentsForSession()
     {
-        // Get the pivot data to know which year/semester this course unit belongs to for this course
         $courseCourseUnit = DB::table('course_course_units')
             ->where('course_id', $this->selectedCourseId)
             ->where('course_unit_id', $this->selectedCourseUnitId)
@@ -149,11 +153,17 @@ class MarkClassAttendance extends Component
 
         if (!$courseCourseUnit) {
             $this->students = collect([]);
+            $this->manualStudents = collect([]);
             return;
         }
 
-        // Get students in this course who are in the correct year/semester for this course unit
-        $this->students = Student::where('course_id', $this->selectedCourseId)
+        // Get currently marked student IDs to track manual additions
+        $markedStudentIds = AttendanceRecord::where('class_session_id', $this->createdSessionId)
+            ->pluck('student_id')
+            ->toArray();
+
+        // Get students in this course who are in the correct year/semester
+        $regularStudents = Student::where('course_id', $this->selectedCourseId)
             ->where('current_year', $courseCourseUnit->default_year)
             ->where('current_semester', $courseCourseUnit->default_semester)
             ->with('department')
@@ -166,8 +176,21 @@ class MarkClassAttendance extends Component
             ->orderBy('name')
             ->get();
 
-        // TODO: Add students from course_unit_exceptions table (retakes)
-        // This will be added later
+        $regularStudentIds = $regularStudents->pluck('user_id')->toArray();
+
+        // Find manually added students (those with attendance records but not in regular list)
+        $manualStudentIds = array_diff($markedStudentIds, $regularStudentIds);
+        
+        $this->manualStudents = collect([]);
+        if (!empty($manualStudentIds)) {
+            $this->manualStudents = Student::whereIn('user_id', $manualStudentIds)
+                ->with('department')
+                ->orderBy('name')
+                ->get();
+        }
+
+        // Combine regular and manual students
+        $this->students = $regularStudents->merge($this->manualStudents);
 
         // Load existing attendance
         $existingAttendance = AttendanceRecord::where('class_session_id', $this->createdSessionId)
@@ -180,7 +203,201 @@ class MarkClassAttendance extends Component
         }
     }
 
-    // Quick actions
+    // Remove manually added student
+    public function removeManualStudent($studentId)
+    {
+        DB::beginTransaction();
+
+        try {
+            // Delete the attendance record
+            AttendanceRecord::where('class_session_id', $this->createdSessionId)
+                ->where('student_id', $studentId)
+                ->delete();
+
+            // Remove from attendance array
+            unset($this->attendance[$studentId]);
+
+            // Remove the student from the list of manualStudents
+            $this->manualStudents = $this->manualStudents->reject(function ($student) use ($studentId) {
+                return $student->user_id == $studentId; // Fixed: use user_id instead of id
+            });
+
+            // Also remove from the main students list
+            $this->students = $this->students->reject(function ($student) use ($studentId) {
+                return $student->user_id == $studentId;
+            });
+
+            DB::commit();
+
+            Notification::make()
+                ->title('Student removed')
+                ->success()
+                ->send();
+
+            // DON'T call loadStudentsForSession() here as it will reload everything
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            Notification::make()
+                ->title('Error removing student')
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
+        }
+    }
+
+    // ==========================================
+    // ADD STUDENTS MODAL METHODS
+    // ==========================================
+    
+    public function openAddStudentsModal()
+    {
+        $this->showAddStudentsModal = true;
+        $this->selectedStudentsToAdd = [];
+        $this->modalSearchStudent = '';
+        $this->loadAvailableStudents();
+    }
+
+    public function closeAddStudentsModal()
+    {
+        $this->showAddStudentsModal = false;
+        $this->reset(['selectedStudentsToAdd', 'modalSearchStudent', 'availableStudents', 'modalFilters']);
+    }
+
+    public function loadAvailableStudents()
+    {
+        if (!$this->createdSessionId) {
+            return;
+        }
+
+        // Get student IDs already in the session
+        $currentStudentIds = $this->students->pluck('user_id')->toArray();
+
+        // Build query for available students
+        $query = Student::where('course_id', $this->selectedCourseId)
+            ->whereNotIn('user_id', $currentStudentIds)
+            ->with('department');
+
+        // Apply filters
+        if (!$this->modalFilters['show_all_years']) {
+            // Get default year/semester from pivot
+            $courseCourseUnit = DB::table('course_course_units')
+                ->where('course_id', $this->selectedCourseId)
+                ->where('course_unit_id', $this->selectedCourseUnitId)
+                ->first();
+
+            if ($courseCourseUnit) {
+                $query->where('current_year', $courseCourseUnit->default_year)
+                      ->where('current_semester', $courseCourseUnit->default_semester);
+            }
+        } else {
+            // Show all students from this course
+            if ($this->modalFilters['year']) {
+                $query->where('current_year', $this->modalFilters['year']);
+            }
+            if ($this->modalFilters['semester']) {
+                $query->where('current_semester', $this->modalFilters['semester']);
+            }
+        }
+
+        // Apply search
+        if ($this->modalSearchStudent) {
+            $query->where(function ($q) {
+                $q->where('name', 'like', '%' . $this->modalSearchStudent . '%')
+                  ->orWhere('registration_number', 'like', '%' . $this->modalSearchStudent . '%');
+            });
+        }
+
+        $this->availableStudents = $query->orderBy('name')->get();
+    }
+
+    public function updatedModalSearchStudent()
+    {
+        $this->loadAvailableStudents();
+    }
+
+    public function updatedModalFilters()
+    {
+        $this->loadAvailableStudents();
+    }
+
+    public function toggleStudentSelection($studentId)
+    {
+        if (in_array($studentId, $this->selectedStudentsToAdd)) {
+            $this->selectedStudentsToAdd = array_diff($this->selectedStudentsToAdd, [$studentId]);
+        } else {
+            $this->selectedStudentsToAdd[] = $studentId;
+        }
+    }
+
+    public function selectAllAvailableStudents()
+    {
+        $this->selectedStudentsToAdd = $this->availableStudents->pluck('user_id')->toArray();
+    }
+
+    public function deselectAllAvailableStudents()
+    {
+        $this->selectedStudentsToAdd = [];
+    }
+
+    public function addSelectedStudents()
+    {
+        if (empty($this->selectedStudentsToAdd)) {
+            Notification::make()
+                ->title('No students selected')
+                ->warning()
+                ->send();
+            return;
+        }
+
+        DB::beginTransaction();
+
+        try {
+            foreach ($this->selectedStudentsToAdd as $studentId) {
+                // Create attendance record with default 'absent' status
+                AttendanceRecord::firstOrCreate(
+                    [
+                        'class_session_id' => $this->createdSessionId,
+                        'student_id' => $studentId,
+                    ],
+                    [
+                        'status' => 'absent',
+                        'marked_by' => Auth::user()->id,
+                        'marked_at' => now(),
+                    ]
+                );
+            }
+
+            DB::commit();
+
+            $count = count($this->selectedStudentsToAdd);
+            
+            Notification::make()
+                ->title('Students added successfully')
+                ->body("$count student(s) added to session")
+                ->success()
+                ->send();
+
+            // Reload the students list
+            $this->loadStudentsForSession();
+            $this->closeAddStudentsModal();
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            Notification::make()
+                ->title('Error adding students')
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
+        }
+    }
+
+    // ==========================================
+    // ATTENDANCE MARKING METHODS
+    // ==========================================
+
     public function markAll($status)
     {
         foreach ($this->students as $student) {
@@ -251,7 +468,7 @@ class MarkClassAttendance extends Component
 
     public function render()
     {
-        $courses = Course::with('department')
+        $courses = Course::forUserRole(Auth::user())->with('department')
             ->orderBy('name')
             ->get();
 

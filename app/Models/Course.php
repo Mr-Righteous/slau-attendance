@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Traits\HasFacultyScope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Course extends Model
 {
     use HasFactory;
+    use HasFacultyScope;
 
     protected $fillable = [
         'name',
@@ -55,5 +58,19 @@ class Course extends Model
         return $this->courseUnits()
             ->wherePivot('is_core', true)
             ->get();
+    }
+
+    public function scopeForUserRole(Builder $query, User $user)
+    {
+        if ($user->hasRole('dpt-hod'))
+        {
+            $myFacultyId = Faculty::findOrFail($user->department->faculty_id)->id;
+            return $query->where('department_id', $user->department_id);
+        } elseif ($user->hasRole('faculty-dean')) {
+            $myFacultyId = Faculty::findOrFail($user->department->faculty_id)->id;
+            return $query->inFaculty($myFacultyId);
+        } else {
+            return $query;
+        }
     }
 }

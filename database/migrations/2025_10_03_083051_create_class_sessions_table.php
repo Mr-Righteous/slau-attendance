@@ -12,6 +12,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('course_unit_id')->constrained()->cascadeOnDelete();
             $table->foreignId('lecturer_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->integer('week');
             $table->date('date');
             $table->time('start_time');
             $table->time('end_time');

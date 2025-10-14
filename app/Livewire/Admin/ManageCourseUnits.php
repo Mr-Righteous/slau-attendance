@@ -7,6 +7,7 @@ use App\Models\CourseUnit;
 use App\Models\Department;
 use App\Models\User;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -26,13 +27,12 @@ class ManageCourseUnits extends Component
     public $lecturer_id = '';
     public $credits = 3;
     public $semester = 1;
-    public $academic_year = '';
 
     // Filter fields
     public $search = '';
     public $departmentFilter = '';
     public $semesterFilter = '';
-    public $academicYearFilter = '';
+    public $defaultYearFilter = '';
 
     protected $rules = [
         'code' => 'required|string|max:20|unique:course_units,code',
@@ -42,18 +42,11 @@ class ManageCourseUnits extends Component
         'lecturer_id' => 'nullable|exists:users,id',
         'credits' => 'required|integer|min:1|max:10',
         'semester' => 'required|integer|in:1,2',
-        'academic_year' => 'required|integer|min:2020|max:2030',
     ];
-
-    public function mount()
-    {
-        $this->academic_year = now()->year;
-    }
 
     public function openCreateModal()
     {
         $this->reset(['code', 'name', 'description', 'department_id', 'lecturer_id', 'credits', 'semester']);
-        $this->academic_year = now()->year;
         $this->showCreateModal = true;
     }
 
@@ -76,7 +69,6 @@ class ManageCourseUnits extends Component
                 'lecturer_id' => $this->lecturer_id ?: null,
                 'credits' => $this->credits,
                 'semester' => $this->semester,
-                'academic_year' => $this->academic_year,
             ]);
 
             Notification::make()
@@ -104,7 +96,6 @@ class ManageCourseUnits extends Component
         $this->lecturer_id = $this->editingCourseUnit->lecturer_id;
         $this->credits = $this->editingCourseUnit->credits;
         $this->semester = $this->editingCourseUnit->semester;
-        $this->academic_year = $this->editingCourseUnit->academic_year;
         $this->showEditModal = true;
     }
 
@@ -125,7 +116,6 @@ class ManageCourseUnits extends Component
             'lecturer_id' => 'nullable|exists:users,id',
             'credits' => 'required|integer|min:1|max:10',
             'semester' => 'required|integer|in:1,2',
-            'academic_year' => 'required|integer|min:2020|max:2030',
         ]);
 
         try {
@@ -137,7 +127,6 @@ class ManageCourseUnits extends Component
                 'lecturer_id' => $this->lecturer_id ?: null,
                 'credits' => $this->credits,
                 'semester' => $this->semester,
-                'academic_year' => $this->academic_year,
             ]);
 
             Notification::make()
@@ -200,6 +189,7 @@ class ManageCourseUnits extends Component
     public function render()
     {
         $courseUnits = CourseUnit::with(['department', 'lecturer', 'courses', 'classSessions'])
+            ->forUserRole(Auth::user())
             ->when($this->search, function ($query) {
                 $query->where(function ($q) {
                     $q->where('code', 'like', '%' . $this->search . '%')
@@ -212,17 +202,19 @@ class ManageCourseUnits extends Component
             ->when($this->semesterFilter, function ($query) {
                 $query->where('semester', $this->semesterFilter);
             })
-            ->when($this->academicYearFilter, function ($query) {
-                $query->where('academic_year', $this->academicYearFilter);
+            ->when($this->defaultYearFilter, function ($query) {
+                $query->whereHas('courses', function ($q) {
+                    $q->where('default_year', $this->defaultYearFilter);
+                });
             })
             ->orderBy('code')
             ->paginate(10);
 
         $departments = Department::orderBy('name')->get();
-        $lecturers = User::whereHas('roles', function ($q) {
+        $lecturers = User::forUserRole(Auth::user())->whereHas('roles', function ($q) {
             $q->where('name', 'lecturer');
         })->orderBy('name')->get();
-        $courses = Course::orderBy('name')->get();
+        $courses = Course::forUserRole(Auth::user())->orderBy('name')->get();
 
         return view('livewire.admin.manage-course-units', [
             'courseUnits' => $courseUnits,

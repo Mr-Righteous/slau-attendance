@@ -8,6 +8,7 @@ use App\Models\Student;
 use App\Models\StudentAcademicProgress;
 use App\Models\User;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Spatie\Permission\Models\Role;
@@ -71,6 +72,8 @@ class ManageStudents extends Component
 
     public function openCreateModal()
     {
+        $this->dispatch('open-modal', id:'create-student');
+
         $this->reset([
             'registration_number', 'name', 'email', 'department_id', 'course_id',
             'current_year', 'current_semester', 'academic_year', 'gender', 'phone',
@@ -86,6 +89,7 @@ class ManageStudents extends Component
 
     public function closeCreateModal()
     {
+        $this->dispatch('close-modal', id:'create-student');
         $this->showCreateModal = false;
         $this->resetErrorBag();
     }
@@ -176,10 +180,12 @@ class ManageStudents extends Component
         $this->zip = $this->editingStudent->zip;
         $this->country = $this->editingStudent->country;
         $this->showEditModal = true;
+        $this->dispatch('open-modal', id:'edit-student');
     }
 
     public function closeEditModal()
     {
+        $this->dispatch('close-modal', id:'edit-student');
         $this->showEditModal = false;
         $this->editingStudent = null;
         $this->resetErrorBag();
@@ -335,7 +341,7 @@ class ManageStudents extends Component
 
     public function render()
     {
-        $students = Student::with(['user', 'course', 'department', 'academicProgress'])
+        $students = Student::forUserRole(Auth::user())->with(['user', 'course', 'department', 'academicProgress'])
             ->when($this->search, function ($query) {
                 $query->where(function ($q) {
                     $q->where('name', 'like', '%' . $this->search . '%')
@@ -359,7 +365,7 @@ class ManageStudents extends Component
             ->paginate(15);
 
         $departments = Department::orderBy('name')->get();
-        $courses = Course::orderBy('name')->get();
+        $courses = Course::forUserRole(Auth::user())->orderBy('name')->get();
 
         return view('livewire.admin.manage-students', [
             'students' => $students,

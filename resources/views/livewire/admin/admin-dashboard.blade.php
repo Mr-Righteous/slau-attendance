@@ -94,10 +94,12 @@
                class="p-4 border-2 border-gray-200 rounded-lg hover:border-yellow-500 hover:bg-yellow-50 transition text-center">
                 <div class="text-yellow-600 font-semibold text-sm">View Records</div>
             </a>
-            <a href="{{ route('admin.import') }}" 
-               class="p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition text-center">
-                <div class="text-indigo-600 font-semibold text-sm">Import Data</div>
-            </a>
+            @hasanyrole(['big-admin','super-admin','faculty-dean'])
+                <a href="{{ route('admin.import') }}" 
+                class="p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition text-center">
+                    <div class="text-indigo-600 font-semibold text-sm">Import Data</div>
+                </a>
+            @endhasanyrole
         </div>
     </div>
 

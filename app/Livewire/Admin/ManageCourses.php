@@ -7,6 +7,7 @@ use App\Models\Department;
 use App\Models\Program;
 use App\Models\User;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -198,6 +199,22 @@ class ManageCourses extends Component
             ->paginate(15);
 
         $departments = Department::orderBy('name')->get();
+        
+        if(Auth::user()->hasRole('dpt-hod')) {
+            $courses = Course::query()
+                ->where('department_id', Auth::user()->department_id)
+                ->with(['department'])
+                ->withCount('students')
+                ->when($this->search, function ($query) {
+                    $query->where(function ($q) {
+                        $q->where('code', 'like', '%' . $this->search . '%')
+                        ->orWhere('name', 'like', '%' . $this->search . '%');
+                    });
+                })
+                ->orderBy('code')
+                ->paginate(15);
+
+        }
 
         return view('livewire.admin.manage-courses', [
             'courses' => $courses,

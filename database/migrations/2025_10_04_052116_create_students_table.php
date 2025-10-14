@@ -28,7 +28,7 @@ return new class extends Migration
             $table->string('zip')->nullable();
             $table->integer('current_year')->nullable(); // 1, 2, 3, 4
             $table->integer('current_semester')->nullable(); // 1, 2
-            $table->string('academic_year')->nullable(); 
+            $table->string('academic_year')->nullable(); // year of entry 
             $table->string('country')->nullable();
             $table->string('photo')->nullable();
             $table->timestamps();

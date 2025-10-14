@@ -2,16 +2,20 @@
 
 namespace App\Models;
 
+use App\Traits\HasFacultyScope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class ClassSession extends Model
 {
     use HasFactory;
+    use HasFacultyScope;
 
     protected $fillable = [
         'course_unit_id',
         'lecturer_id',
+        'week',
         'date',
         'start_time',
         'end_time',
@@ -49,6 +53,24 @@ class ClassSession extends Model
             ->count();
         
         return round(($present / $total) * 100, 2);
+    }
+
+    
+
+    public function scopeForUserRole(Builder $query, User $user)
+    {
+        
+
+        if ($user->hasRole('dpt-hod'))
+        {
+            $myFacultyId = Faculty::findOrFail($user->department->faculty_id)->id;
+            return $query->where('department_id', $user->department_id);
+        } elseif ($user->hasRole('faculty-dean')) {
+            $myFacultyId = Faculty::findOrFail($user->department->faculty_id)->id;
+            return $query->inFaculty($myFacultyId);
+        } else {
+            return $query;
+        }
     }
 
     // Get total enrolled students who should have attendance

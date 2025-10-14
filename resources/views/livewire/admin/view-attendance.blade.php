@@ -115,7 +115,7 @@
                         </select>
                     </div>
                 @endif
-
+                @hasanyrole(['faculty-dean','big-admin','super-admin'])
                 <div>
                     <label class="block text-xs font-medium text-gray-700 mb-1">Department</label>
                     <select wire:model.live="filterDepartment" 
@@ -126,6 +126,7 @@
                         @endforeach
                     </select>
                 </div>
+                @endhasanyrole
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -182,7 +183,7 @@
                         @forelse($data as $record)
                             <tr class="hover:bg-gray-50">
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                    {{ $record->student->name }}
+                                    {{ $record->student?->name ?? 'N/A' }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                     {{ $record->student->registration_number }}

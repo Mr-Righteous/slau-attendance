@@ -6,16 +6,17 @@
         @filamentStyles()
     </head>
     <body class="min-h-screen bg-white dark:bg-zinc-800">
-        <flux:sidebar sticky stashable class="border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
-            <flux:sidebar.toggle class="lg:hidden" icon="x-mark" />
-
-            <a href="{{ route('dashboard') }}" class="me-5 flex items-center space-x-2 rtl:space-x-reverse" wire:navigate>
-                <x-app-logo />
-            </a>
+        <flux:sidebar sticky collapsible class="border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
+            <flux:sidebar.header>
+                <a href="{{ route('dashboard') }}" class="me-5 flex items-center space-x-2 rtl:space-x-reverse" wire:navigate>
+                    <x-app-logo />
+                </a>
+                <flux:sidebar.collapse class="in-data-flux-sidebar-on-desktop:not-in-data-flux-sidebar-collapsed=desktop:-mr-2" />
+            </flux:sidebar.header>
+            
 
             <flux:navlist variant="outline">
                 @hasrole('student')
-                    
                         <flux:navlist.group :heading="__('Platform')" class="grid">
                             <flux:navlist.item icon="home" :href="route('student.dashboard')" :current="request()->routeIs('student.dashboard')" wire:navigate>{{ __('Dashboard') }}</flux:navlist.item>
                             <flux:navlist.item icon="academic-cap" :href="route('student.courses')" :current="request()->routeIs('student.courses')" wire:navigate>{{ __('My Courses') }}</flux:navlist.item>
@@ -25,24 +26,43 @@
                 @endhasrole
 
                 @hasrole('admin')
-                {{-- <flux:navlist.label>Admin Panel</flux:navlist.label> --}}
+                    <flux:navlist.item icon="user" :href="route('admin.dashboard')" :current="request()->routeIs('admin.*')">{{ __(Auth::user()->purpose) }}</flux:navlist.item>
+                    <flux:menu.separator />
 
-                    <flux:navlist.item icon="home" :href="route('admin.dashboard')" :current="request()->routeIs('admin.dashboard')" wire:navigate>{{ __('Dashboard') }}</flux:navlist.item>
-                    <flux:navlist.item icon="arrow-up-tray" :href="route('admin.import')" :current="request()->routeIs('admin.import')" wire:navigate>{{ __('Import Users') }}</flux:navlist.item>
-                    <flux:navlist.item icon="pencil-square" :href="route('admin.manage-departments')" :current="request()->routeIs('admin.manage-departments')" wire:navigate>{{ __('Manage Departments') }}</flux:navlist.item>
-                    <flux:navlist.item icon="academic-cap" :href="route('admin.courses')" :current="request()->routeIs('admin.courses')" wire:navigate>{{ __('Manage Courses') }}</flux:navlist.item>
-                    <flux:navlist.item icon="pencil-square" :href="route('admin.manage-course-units')" :current="request()->routeIs('admin.manage-course-units')" wire:navigate>{{ __('Manage Course Units') }}</flux:navlist.item>
-                    <flux:navlist.item icon="academic-cap" :href="route('admin.manage-students')" :current="request()->routeIs('admin.manage-students')" wire:navigate>{{ __('Manage Students') }}</flux:navlist.item>
-                    <flux:navlist.item icon="user-group" :href="route('admin.view-attendance')" :current="request()->routeIs('admin.view-attendance')" wire:navigate>{{ __('View Attendance') }}</flux:navlist.item>
-                    <flux:navlist.item icon="chart-bar" :href="route('admin.reports')" :current="request()->routeIs('admin.reports')" wire:navigate>{{ __('Advanced Reports') }}</flux:navlist.item>
-                    <flux:navlist.item icon="pencil-square" :href="route('admin.attendance')" :current="request()->routeIs('admin.attendance')" wire:navigate>{{ __('Mark Attendance') }}</flux:navlist.item>
+                    <flux:navlist.group :heading="__('Platform - HOD')" class="grid">
+                        
+                        <flux:navlist.item icon="home" :href="route('admin.dashboard')" :current="request()->routeIs('admin.dashboard')" wire:navigate>{{ __('Dashboard') }}</flux:navlist.item>
+                        
+                        
+                        <flux:navlist.item icon="academic-cap" :href="route('admin.courses')" :current="request()->routeIs('admin.courses')" wire:navigate>{{ __('Manage Courses') }}</flux:navlist.item>
+                        <flux:navlist.item icon="pencil-square" :href="route('admin.manage-course-units')" :current="request()->routeIs('admin.manage-course-units')" wire:navigate>{{ __('Manage Course Units') }}</flux:navlist.item>
+                        <flux:navlist.item icon="academic-cap" :href="route('admin.manage-students')" :current="request()->routeIs('admin.manage-students')" wire:navigate>{{ __('Manage Students') }}</flux:navlist.item>
+                        
+                        <flux:navlist.item icon="user-group" :href="route('admin.view-attendance')" :current="request()->routeIs('admin.view-attendance')" wire:navigate>{{ __('View Attendance') }}</flux:navlist.item>
+                        <flux:navlist.item icon="chart-bar" :href="route('admin.reports')" :current="request()->routeIs('admin.reports')" wire:navigate>{{ __('Advanced Reports') }}</flux:navlist.item>
+                        <flux:navlist.item icon="pencil-square" :href="route('admin.attendance')" :current="request()->routeIs('admin.attendance')" wire:navigate>{{ __('Mark Attendance') }}</flux:navlist.item>
+                        <flux:navlist.item icon="academic-cap" :href="route('admin.attendance-reports')" :current="request()->routeIs('admin.attendance-reports')" wire:navigate>{{ __('Attendance Reports') }}</flux:navlist.item>
                     
+                    </flux:navlist.group>
                 @endhasrole
+
+                @hasanyrole(['big-admin','super-admin','faculty-dean'])
+                    <flux:navlist.group :heading="__('Dean')" class="grid">
+                        <flux:navlist.item icon="arrow-up-tray" :href="route('admin.import')" :current="request()->routeIs('admin.import')" wire:navigate>{{ __('Import Users') }}</flux:navlist.item>
+                        <flux:navlist.item icon="pencil-square" :href="route('admin.manage-departments')" :current="request()->routeIs('admin.manage-departments')" wire:navigate>{{ __('Manage Departments') }}</flux:navlist.item>
+                        <flux:navlist.item icon="academic-cap" :href="route('admin.manage-lecturers')" :current="request()->routeIs('admin.manage-lecturers')" wire:navigate>{{ __('Manage Lecturers') }}</flux:navlist.item>
+                        </flux:navlist.group>
+                @endhasanyrole
+
+
+                @hasanyrole(['big-admin','super-admin'])
+                    <flux:navlist.group :heading="__('Admin Only')" class="grid">
+                        <flux:navlist.item icon="academic-cap" :href="route('admin.manage-faculties')" :current="request()->routeIs('admin.manage-faculties')" wire:navigate>{{ __('Manage Faculties') }}</flux:navlist.item>        
+                    </flux:navlist.group>
+                @endhasanyrole
            
 
                 @hasrole('lecturer')
-                {{-- <flux:navlist.label>Lecturer Panel</flux:navlist.label> --}}
-
                     <flux:navlist.item icon="home" :href="route('lecturer.dashboard')" :current="request()->routeIs('lecturer.dashboard')" wire:navigate>{{ __('Dashboard') }}</flux:navlist.item>
                     <flux:navlist.item icon="academic-cap" :href="route('lecturer.courses')" :current="request()->routeIs('lecturer.courses')" wire:navigate>{{ __('My Courses') }}</flux:navlist.item>
                     <flux:navlist.item icon="chart-bar" :href="route('lecturer.attendance')" :current="request()->routeIs('lecturer.attendance')" wire:navigate>{{ __('View Attendance') }}</flux:navlist.item>

@@ -10,6 +10,7 @@ use App\Models\Course;
 use App\Models\CourseUnit;
 use App\Models\Department;
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class ViewAttendance extends Component
@@ -27,7 +28,7 @@ class ViewAttendance extends Component
     public $dateTo = '';
 
     // View mode
-    public $viewMode = 'records'; // records, sessions, students
+    public $viewMode = 'sessions'; // records, sessions, students
 
     // Stats
     public $showStats = true;
@@ -87,8 +88,6 @@ class ViewAttendance extends Component
 
     public function exportData()
     {
-        // This would export filtered data to CSV/Excel
-        // For now, just show notification
         \Filament\Notifications\Notification::make()
             ->title('Export feature')
             ->body('Export functionality will be implemented in the next phase')
@@ -98,8 +97,20 @@ class ViewAttendance extends Component
 
     public function getStatsProperty()
     {
-        $query = AttendanceRecord::query()
-            ->when($this->dateFrom, function ($q) {
+        $user = Auth::user();
+        
+        // Base query for stats
+        $query = AttendanceRecord::query();
+
+        // Apply role-based filtering
+        if ($user->hasRole('dpt-hod') && $user->department) {
+            $query->whereHas('student', function ($q) use ($user) {
+                $q->where('department_id', $user->department->id);
+            });
+        }
+
+        // Apply date filters
+        $query->when($this->dateFrom, function ($q) {
                 $q->whereHas('classSession', function ($query) {
                     $query->where('date', '>=', $this->dateFrom);
                 });
@@ -140,33 +151,58 @@ class ViewAttendance extends Component
 
     public function render()
     {
+        $user = Auth::user();
+        $department = $user->department;
+        
         // Get courses for filter
-        $courses = Course::orderBy('code')->get();
+        $courses = Course::forUserRole($user)->orderBy('code')->get();
         $departments = Department::orderBy('name')->get();
 
         // Get course units for selected course
         $courseUnits = [];
         if ($this->filterCourse) {
-            $courseUnits = CourseUnit::whereHas('courses', function ($query) {
-                $query->where('courses.id', $this->filterCourse);
-            })->orderBy('name')->get();
-        }
-
-        // Get sessions for selected course unit
-        $sessions = [];
-        if ($this->filterCourseUnit) {
-            $sessions = ClassSession::where('course_unit_id', $this->filterCourseUnit)
-                ->orderBy('date', 'desc')
+            $courseUnits = CourseUnit::forUserRole($user)
+                ->whereHas('courses', function ($query) {
+                    $query->where('courses.id', $this->filterCourse);
+                })
+                ->orderBy('name')
                 ->get();
         }
 
         $data = null;
 
+        // Check if user has admin privileges (no department restrictions)
+        $isAdmin = $user->hasAnyRole(['super-admin', 'big-admin', 'faculty-dean']);
+
+        // Get sessions for selected course unit
+        $sessions = [];
+        if ($this->filterCourseUnit) {
+            $sessionsQuery = ClassSession::where('course_unit_id', $this->filterCourseUnit);
+            
+            // Apply department filter for HODs
+            if (!$isAdmin && $department) {
+                $sessionsQuery->whereHas('courseUnit', function ($q) use ($department) {
+                    $q->where('department_id', $department->id);
+                });
+            }
+            
+            $sessions = $sessionsQuery->orderBy('date', 'desc')->get();
+        }
+
         // View Mode: Individual Records
         if ($this->viewMode === 'records') {
-            $data = AttendanceRecord::query()
-                ->with(['student.department', 'classSession.courseUnit.courses', 'markedBy'])
-                ->when($this->filterCourse, function ($query) {
+            $recordsQuery = AttendanceRecord::query()
+                ->with(['student.department', 'classSession.courseUnit.courses', 'markedBy']);
+
+            // Apply role-based filtering
+            if (!$isAdmin && $department) {
+                $recordsQuery->whereHas('student', function ($q) use ($department) {
+                    $q->where('department_id', $department->id);
+                });
+            }
+
+            // Apply all filters
+            $recordsQuery->when($this->filterCourse, function ($query) {
                     $query->whereHas('classSession.courseUnit', function ($q) {
                         $q->whereHas('courses', function ($query) {
                             $query->where('courses.id', $this->filterCourse);
@@ -204,14 +240,14 @@ class ViewAttendance extends Component
                     $query->whereHas('classSession', function ($q) {
                         $q->where('date', '<=', $this->dateTo);
                     });
-                })
-                ->orderBy('marked_at', 'desc')
-                ->paginate(20);
+                });
+
+            $data = $recordsQuery->orderBy('marked_at', 'desc')->paginate(20);
         }
 
         // View Mode: By Session
         if ($this->viewMode === 'sessions') {
-            $data = ClassSession::query()
+            $sessionsQuery = ClassSession::query()
                 ->with(['courseUnit.courses.department', 'attendanceRecords'])
                 ->withCount([
                     'attendanceRecords',
@@ -224,8 +260,17 @@ class ViewAttendance extends Component
                     'attendanceRecords as absent_count' => function ($query) {
                         $query->where('status', 'absent');
                     },
-                ])
-                ->when($this->filterCourse, function ($query) {
+                ]);
+
+            // Apply role-based filtering
+            if (!$isAdmin && $department) {
+                $sessionsQuery->whereHas('courseUnit', function ($q) use ($department) {
+                    $q->where('department_id', $department->id);
+                });
+            }
+
+            // Apply filters
+            $sessionsQuery->when($this->filterCourse, function ($query) {
                     $query->whereHas('courseUnit', function ($q) {
                         $q->whereHas('courses', function ($query) {
                             $query->where('courses.id', $this->filterCourse);
@@ -240,19 +285,25 @@ class ViewAttendance extends Component
                 })
                 ->when($this->dateTo, function ($query) {
                     $query->where('date', '<=', $this->dateTo);
-                })
-                ->orderBy('date', 'desc')
-                ->paginate(15);
+                });
+
+            $data = $sessionsQuery->orderBy('date', 'desc')->paginate(15);
         }
 
         // View Mode: By Student
         if ($this->viewMode === 'students') {
-            $studentsQuery = User::query()
-                ->whereHas('roles', function ($query) {
+            $studentsQuery = User::whereHas('roles', function ($query) {
                     $query->where('name', 'student');
                 })
-                ->with(['department', 'student.course'])
-                ->when($this->searchStudent, function ($query) {
+                ->with(['department', 'student.course']);
+
+            // Apply role-based filtering
+            if (!$isAdmin && $department) {
+                $studentsQuery->where('department_id', $department->id);
+            }
+
+            // Apply filters
+            $studentsQuery->when($this->searchStudent, function ($query) {
                     $query->where(function ($q) {
                         $q->where('name', 'like', '%' . $this->searchStudent . '%')
                           ->orWhereHas('student', function ($q) {
@@ -262,22 +313,22 @@ class ViewAttendance extends Component
                 })
                 ->when($this->filterDepartment, function ($query) {
                     $query->where('department_id', $this->filterDepartment);
+                })
+                ->when($this->filterCourse, function ($query) {
+                    $query->whereHas('student', function ($q) {
+                        $q->where('course_id', $this->filterCourse);
+                    });
                 });
-
-            if ($this->filterCourse) {
-                // Filter students enrolled in specific course
-                $studentsQuery->whereHas('student', function ($query) {
-                    $query->where('course_id', $this->filterCourse);
-                });
-            }
 
             $data = $studentsQuery->paginate(20);
 
             // Add attendance stats for each student
             foreach ($data as $student) {
-                $attendanceQuery = AttendanceRecord::where('student_id', $student->id)
-                    ->when($this->filterCourse, function ($query) use ($student) {
-                        $query->whereHas('classSession.courseUnit', function ($q) use ($student) {
+                $attendanceQuery = AttendanceRecord::where('student_id', $student->id);
+
+                // Apply filters
+                $attendanceQuery->when($this->filterCourse, function ($query) {
+                        $query->whereHas('classSession.courseUnit', function ($q) {
                             $q->whereHas('courses', function ($query) {
                                 $query->where('courses.id', $this->filterCourse);
                             });

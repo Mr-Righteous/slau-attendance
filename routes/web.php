@@ -3,6 +3,7 @@
 use App\Livewire\Admin\AdminDashboard;
 use App\Livewire\Admin\ImportUsers;
 use App\Livewire\Admin\ManageCourses;
+use App\Livewire\Admin\ManageFaculties;
 use App\Livewire\Admin\MarkClassAttendance;
 use App\Livewire\Admin\ViewAttendance;
 use App\Livewire\Settings\Appearance;
@@ -24,17 +25,27 @@ Route::middleware(['auth'])->group(function () {
 
     // Admin routes
     Route::middleware(['role:admin'])->prefix('admin')->group(function () {
-        Route::get('/import', ImportUsers::class)->name('admin.import');
+        Route::redirect('/','/admin/dashboard');
         Route::get('/courses', ManageCourses::class)->name('admin.courses');
         Route::get('/course-units', ManageCourses::class)->name('admin.course-units');
         // Route::get('/courses', ManageCourses::class)->name('admin.courses');
-        Route::get('/manage-departments', \App\Livewire\Admin\ManageDepartments::class)->name('admin.manage-departments');
         Route::get('/manage-course-units', \App\Livewire\Admin\ManageCourseUnits::class)->name('admin.manage-course-units');
         Route::get('/manage-students', \App\Livewire\Admin\ManageStudents::class)->name('admin.manage-students');
+        
         Route::get('/view-attendance', ViewAttendance::class)->name('admin.view-attendance');
         Route::get('/reports', \App\Livewire\Admin\AdvancedReports::class)->name('admin.reports');
         Route::get('/dashboard', AdminDashboard::class)->name('admin.dashboard');
         Route::get('/attendance', MarkClassAttendance::class)->name('admin.attendance');
+        Route::get('/attendance-reports', \App\Livewire\Admin\AttendanceReports::class)->name('admin.attendance-reports');     
+        
+        Route::group(['middleware' => ['role:big-admin|super-admin|faculty-dean']], function () {
+            Route::get('/import', ImportUsers::class)->name('admin.import');
+            Route::get('/manage-departments', \App\Livewire\Admin\ManageDepartments::class)->name('admin.manage-departments');
+            Route::get('/manage-lecturers', \App\Livewire\Admin\ManageLecturers::class)->name('admin.manage-lecturers');     
+            });
+        
+        Route::get('/faculties', ManageFaculties::class)->middleware(['role:big-admin','role:super-admin'])->name('admin.manage-faculties');
+        
     });
 
     // Lecturer routes

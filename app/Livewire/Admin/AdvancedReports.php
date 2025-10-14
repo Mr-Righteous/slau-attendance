@@ -5,6 +5,7 @@ namespace App\Livewire\Admin;
 use App\Models\Course;
 use App\Models\Department;
 use App\Services\AttendanceService;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
 class AdvancedReports extends Component
@@ -54,7 +55,7 @@ class AdvancedReports extends Component
         $departments = Department::orderBy('name')->get();
         
         // Filter courses based on selected department
-        $coursesQuery = Course::orderBy('name');
+        $coursesQuery = Course::forUserRole(Auth::user())->orderBy('name');
         if ($this->selectedDepartmentId) {
             $coursesQuery->where('department_id', $this->selectedDepartmentId);
         }
